@@ -1,3 +1,24 @@
+#' @title Calculate Cell Proportions in a SpatialExperiment Object
+#'
+#' @description This function calculates the proportions of different cell types in a SpatialExperiment object. 
+#' It can optionally plot a bar chart of the cell proportions.
+#'
+#' @param spe A SpatialExperiment object.
+#' @param cell_types_of_interest A character vector specifying the cell types of interest.
+#'   If NULL, all cell types in the `feature_colname` column will be considered.
+#' @param feature_colname A string specifying the name of the column in the `colData` slot of the SpatialExperiment
+#'   object that contains the cell type information.
+#' @param plot_image A logical indicating whether to plot a bar chart of the cell proportions.
+#'
+#' @return A data frame containing the cell types, their frequencies, proportions, and percentages.
+#'
+#' @examples
+#' cell_proportions <- calculate_cell_proportions3D(spe = SPIAT3D::simulated_spe, 
+#' cell_types_of_interest = NULL, feature_colname = "Cell.Type", plot_image = TRUE)
+#' 
+#' @export
+
+
 calculate_cell_proportions3D <- function(spe,
                                          cell_types_of_interest = NULL, 
                                          feature_colname = "Cell.Type",
