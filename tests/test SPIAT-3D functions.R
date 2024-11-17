@@ -19,10 +19,7 @@ spe3 <- simulate_spe_metadata3D(md3)
 names(colData(spe3))[1] <- "dummy"
 
 # 4. Zero cells
-md4 <- spe_metadata_background_template("random")
-md4$background$cell_types <- c("A", "B")
-spe4 <- simulate_spe_metadata3D(md4)
-spe4 <- spe4[ , 1]
+spe4 <- SpatialExperiment()
 
 # 5. One cell
 md5 <- spe_metadata_background_template("random")
@@ -57,60 +54,257 @@ spe9 <- simulate_spe_metadata3D(md9)
 spe9[["Cell.Type"]][1] <- "A"
 spe9[["Cell.Type"]][1] <- "B"
 
-# 10. One cell type only
+# 10. Reference cell type and target cell type are separated.
 md10 <- spe_metadata_background_template("random")
 md10$background$cell_types <- c("C")
 md10$background$cell_proportions <- c(1)
 spe10 <- simulate_spe_metadata3D(md10)
+spe10$Cell.Type[spatialCoords(spe10[ , 3]) < 20] <- "A"
+spe10$Cell.Type[spatialCoords(spe10[ , 3]) > 280] <- "B"
 
-# 11. Reference cell type and target cell type are separated.
-md11 <- spe_metadata_background_template("random")
-md11$background$cell_types <- c("C")
-md11$background$cell_proportions <- c(1)
-spe11 <- simulate_spe_metadata3D(md11)
-spe11$Cell.Type[spatialCoords(spe11[ , 3]) < 20] <- "A"
-spe11$Cell.Type[spatialCoords(spe11[ , 3]) > 280] <- "B"
+# Put all spes into a list
+spes <- list(spe1,
+             spe2,
+             spe3,
+             spe4,
+             spe5,
+             spe6,
+             spe7,
+             spe8,
+             spe9,
+             spe10)
+
+# Calculate_cell_proportions3D -------
+
+error_df <- data.frame(matrix(nrow = 400, ncol = 5))
+colnames(error_df) <- c("spe", "cell_type_of_interest", "feature_colname", "plot_image", "error_message")
+index <- 1
+
+cell_types_of_interest_options <- list(NULL, "A", c("A", "B"), c("A", "B", "C"), c("A", "B", "C", "D"), "Invalid")
+feature_colname_options <- c("Cell.Type", "Invalid")
+plot_image_options <- list(TRUE, FALSE, "Invalid")
+
+for (i in seq(length(spes))) {
+  
+  curr_spe <- spes[[i]]
+  
+  for (cell_types_of_interest in cell_types_of_interest_options) {
+    error_output <- tryCatch(
+      expr = {
+        calculate_cell_proportions3D(curr_spe,
+                                     cell_types_of_interest = cell_types_of_interest,
+                                     feature_colname = "Cell.Type",
+                                     plot_image = TRUE)
+      },
+      error = function(e) {
+        return(paste(e))
+      }
+    )
+    
+    if (is.character(error_output)) {
+      error_df[index, ] <- c(paste("spe", i, sep = ""), ifelse(is.null(cell_types_of_interest), "NULL", paste(cell_types_of_interest, collapse = ",")), "Cell.Type", TRUE, error_output)
+    } else {
+      error_df[index, ] <- c(paste("spe", i, sep = ""), ifelse(is.null(cell_types_of_interest), "NULL", paste(cell_types_of_interest, collapse = ",")), "Cell.Type", TRUE, "No error.")     
+    }
+    index <- index + 1 
+  }
+  for (feature_colname in feature_colname_options) {
+    error_output <- tryCatch(
+      expr = {
+        calculate_cell_proportions3D(curr_spe,
+                                     cell_types_of_interest = c("A", "B"),
+                                     feature_colname = feature_colname,
+                                     plot_image = TRUE)
+      },
+      error = function(e) {
+        return(paste(e))
+      }
+    )
+    
+    if (is.character(error_output)) {
+      error_df[index, ] <- c(paste("spe", i, sep = ""), "A,B", feature_colname, TRUE, error_output)
+    } else {
+      error_df[index, ] <- c(paste("spe", i, sep = ""), "A,B", feature_colname, TRUE, "No error.")     
+    }
+    index <- index + 1 
+  }
+      
+  for (plot_image in plot_image_options) {
+    error_output <- tryCatch(
+      expr = {
+        calculate_cell_proportions3D(curr_spe,
+                                     cell_types_of_interest = c("A", "B"),
+                                     feature_colname = "Cell.Type",
+                                     plot_image = plot_image)
+      },
+      error = function(e) {
+        return(paste(e))
+      }
+    )
+    
+    if (is.character(error_output)) {
+      error_df[index, ] <- c(paste("spe", i, sep = ""), "A,B", "Cell.Type", plot_image, error_output)
+    } else {
+      error_df[index, ] <- c(paste("spe", i, sep = ""), "A,B", "Cell.Type", plot_image, "No error.")     
+    }
+    index <- index + 1 
+  }
+}
+
+### Calculate entropy background ---------
+error_df <- data.frame(matrix(nrow = 400, ncol = 4))
+colnames(error_df) <- c("spe", "cell_type_of_interest", "feature_colname", "error_message")
+index <- 1
+
+cell_types_of_interest_options <- list(NULL, "A", c("A", "B"), c("A", "B", "C"), c("A", "B", "C", "D"), "Invalid")
+feature_colname_options <- c("Cell.Type", "Invalid")
+
+for (i in seq(length(spes))) {
+  
+  curr_spe <- spes[[i]]
+  
+  for (cell_types_of_interest in cell_types_of_interest_options) {
+    error_output <- tryCatch(
+      expr = {
+        calculate_entropy_background3D(curr_spe,
+                                       cell_types_of_interest = cell_types_of_interest,
+                                       feature_colname = "Cell.Type")
+      },
+      error = function(e) {
+        return(paste(e))
+      }
+    )
+    error_df[index, ] <- c(paste("spe", i, sep = ""), ifelse(is.null(cell_types_of_interest), "NULL", paste(cell_types_of_interest, collapse = ",")), "Cell.Type", error_output)
+    index <- index + 1 
+  }
+  for (feature_colname in feature_colname_options) {
+    error_output <- tryCatch(
+      expr = {
+        calculate_entropy_background3D(curr_spe,
+                                       cell_types_of_interest = c("A", "B"),
+                                       feature_colname = feature_colname)
+      },
+      error = function(e) {
+        return(paste(e))
+      }
+    )
+    error_df[index, ] <- c(paste("spe", i, sep = ""), "A,B", feature_colname, error_output)
+    index <- index + 1 
+  }
+}
 
 
-# Testing functions -----
-chosen_spe <- spe1
 
 
-cell_props1 <- calculate_cell_proportions3D(chosen_spe,
-                                            cell_types_of_interest = NULL,
-                                            plot_image = TRUE)
-print(cell_props1)
-
-cell_props2 <- calculate_cell_proportions3D(chosen_spe,
-                                            cell_types_of_interest = c("A", "B"),
-                                            plot_image = TRUE)
-print(cell_props2)
-
-cell_props3 <- calculate_cell_proportions3D(chosen_spe,
-                                            cell_types_of_interest = c("A"),
-                                            plot_image = TRUE)
-
-print(cell_props3)
-
-cell_props4 <- calculate_cell_proportions3D(chosen_spe,
-                                            cell_types_of_interest = c("A", "D"),
-                                            plot_image = TRUE)
-
-print(cell_props4)
-
-
-
-### Calculate Pairwise Distances between Cells
+### Calculate pairwise distances between cells -----------
 pairwise_distances <- calculate_pairwise_distances_between_cell_types3D(chosen_spe,
                                                                         cell_types_of_interest = c("A", "B"),
+                                                                        feature_colname = "Cell.Type",
+                                                                        show_summary = TRUE,
                                                                         plot_image = TRUE)
 
 
-### Calculate Minimum Distances between cells
-minimum_distances <- calculate_minimum_distances_between_cell_types3D(chosen_spe,
-                                                                      cell_types_of_interest = c("A", "B"),
-                                                                      plot_image = TRUE)
+### Calculate minimum distances between cells ------
+error_df <- data.frame(matrix(nrow = 400, ncol = 6))
+colnames(error_df) <- c("spe", "cell_type_of_interest", "feature_colname", "show_summary", "plot_image", "error_message")
+index <- 1
 
+cell_types_of_interest_options <- list(NULL, "A", c("A", "B"), c("A", "B", "C"), c("A", "B", "C", "D"), "Invalid")
+feature_colname_options <- c("Cell.Type", "Invalid")
+show_summary_options <- list(TRUE, FALSE, "Invalid")
+plot_image_options <- list(TRUE, FALSE, "Invalid")
+
+for (i in seq(length(spes))) {
+  
+  curr_spe <- spes[[i]]
+  
+  for (cell_types_of_interest in cell_types_of_interest_options) {
+    error_output <- tryCatch(
+      expr = {
+        calculate_minimum_distances_between_cell_types3D(curr_spe,
+                                                         cell_types_of_interest = cell_types_of_interest,
+                                                         feature_colname = "Cell.Type",
+                                                         show_summary = TRUE,
+                                                         plot_image = TRUE)
+      },
+      error = function(e) {
+        return(paste(e))
+      }
+    )
+    
+    if (is.character(error_output)) {
+      error_df[index, ] <- c(paste("spe", i, sep = ""), ifelse(is.null(cell_types_of_interest), "NULL", paste(cell_types_of_interest, collapse = ",")), "Cell.Type", TRUE, TRUE, error_output)
+    } else {
+      error_df[index, ] <- c(paste("spe", i, sep = ""), ifelse(is.null(cell_types_of_interest), "NULL", paste(cell_types_of_interest, collapse = ",")), "Cell.Type", TRUE, TRUE, "No error.")     
+    }
+    index <- index + 1 
+  }
+  for (feature_colname in feature_colname_options) {
+    error_output <- tryCatch(
+      expr = {
+        calculate_minimum_distances_between_cell_types3D(curr_spe,
+                                                         cell_types_of_interest = c("A", "B"),
+                                                         feature_colname = feature_colname,
+                                                         show_summary = TRUE,
+                                                         plot_image = TRUE)
+      },
+      error = function(e) {
+        return(paste(e))
+      }
+    )
+    
+    if (is.character(error_output)) {
+      error_df[index, ] <- c(paste("spe", i, sep = ""), "A,B", feature_colname, TRUE, TRUE, error_output)
+    } else {
+      error_df[index, ] <- c(paste("spe", i, sep = ""), "A,B", feature_colname, TRUE, TRUE, "No error.")     
+    }
+    index <- index + 1 
+  }
+  
+  for (show_summary in show_summary_options) {
+    error_output <- tryCatch(
+      expr = {
+        calculate_minimum_distances_between_cell_types3D(curr_spe,
+                                                         cell_types_of_interest = c("A", "B"),
+                                                         feature_colname = "Cell.Type",
+                                                         show_summary = show_summary,
+                                                         plot_image = TRUE)
+      },
+      error = function(e) {
+        return(paste(e))
+      }
+    )
+    
+    if (is.character(error_output)) {
+      error_df[index, ] <- c(paste("spe", i, sep = ""), "A,B", "Cell.Type", show_summary, TRUE, error_output)
+    } else {
+      error_df[index, ] <- c(paste("spe", i, sep = ""), "A,B", "Cell.Type", show_summary, TRUE, "No error.")     
+    }
+    index <- index + 1 
+  }
+  
+  for (plot_image in plot_image_options) {
+    error_output <- tryCatch(
+      expr = {
+        calculate_minimum_distances_between_cell_types3D(curr_spe,
+                                                         cell_types_of_interest = c("A", "B"),
+                                                         feature_colname = "Cell.Type",
+                                                         show_summary = TRUE,
+                                                         plot_image = plot_image)
+      },
+      error = function(e) {
+        return(paste(e))
+      }
+    )
+    
+    if (is.character(error_output)) {
+      error_df[index, ] <- c(paste("spe", i, sep = ""), "A,B", "Cell.Type", TRUE, plot_image, error_output)
+    } else {
+      error_df[index, ] <- c(paste("spe", i, sep = ""), "A,B", "Cell.Type", TRUE, plot_image, "No error.")     
+    }
+    index <- index + 1 
+  }
+}
 
 
 
@@ -119,13 +313,15 @@ minimum_distances <- calculate_minimum_distances_between_cell_types3D(chosen_spe
 mixing_scores <- calculate_mixing_scores3D(chosen_spe,
                                            reference_cell_types = c("A", "B"),
                                            target_cell_types = c("A", "B"),
-                                           radius = 20)
+                                           radius = 20,
+                                           feature_colname = "Cell.Type",)
 print(mixing_scores)
 
 mixing_scores <- calculate_mixing_scores3D(chosen_spe,
                                            reference_cell_types = c("A", "B", "D"),
                                            target_cell_types = c("A", "B"),
-                                           radius = 20)
+                                           radius = 20,
+                                           feature_colname = "Cell.Type",)
 print(mixing_scores)
 
 mixing_scores_gradient <- calculate_mixing_scores_gradient3D(chosen_spe,
