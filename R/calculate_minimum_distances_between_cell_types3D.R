@@ -1,3 +1,34 @@
+#' @title Calculate minimum distances between cell types in 3D spatial data.
+#'
+#' @description This function calculates the minimum distances between different cell types in a 3D SpatialExperiment object. 
+#'    It allows you to specify a subset of cell types to analyse and provides the option to summarise 
+#'    the results and plot violin plots of the minimum distances between cell types.
+#'
+#' @param spe A SpatialExperiment object containing 3D spatial information for the cells.
+#' @param cell_types_of_interest A character vector specifying the cell types of interest.
+#'   If NULL, all cell types in the `feature_colname` column will be considered.
+#' @param feature_colname A string specifying the name of the column in the `colData` slot of the SpatialExperiment
+#'    object that contains the cell type information.
+#' @param show_summary A logical indicating whether to print a summary of the minimum distances 
+#'    for each cell type pair. Defaults to TRUE.
+#' @param plot_image A logical indicating whether to plot violin plots of the minimum distances 
+#'    between cell type pairs. Defaults to TRUE.
+#'
+#' @return A data frame containing information about the reference cell, the nearest cell of another type, 
+#'    and the distance between them for each cell type pair.
+#'
+#' @examples
+#' minimum_distances <- calculate_minimum_distances_between_cell_types3D(
+#'     spe = SPIAT3D::simulated_spe,
+#'     cell_types_of_interest = NULL,
+#'     feature_colname = "Cell.Type",
+#'     show_summary = TRUE,
+#'     plot_image = TRUE
+#' )
+#' 
+#' @export
+
+
 calculate_minimum_distances_between_cell_types3D <- function(spe,
                                                              cell_types_of_interest = NULL,
                                                              feature_colname = "Cell.Type",
@@ -11,7 +42,7 @@ calculate_minimum_distances_between_cell_types3D <- function(spe,
   if (ncol(spe) < 2) {
     stop("There must be at least two cells in spe.")
   }
-  if (!(is.null(cell_types_of_interest) && is.character(cell_types_of_interest))) {
+  if (!(is.null(cell_types_of_interest) || is.character(cell_types_of_interest))) {
     stop("`cell_types_of_interest` is not a character vector or NULL.")
   }
   if (!is.character(feature_colname)) {
