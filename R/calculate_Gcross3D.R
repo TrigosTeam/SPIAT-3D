@@ -4,6 +4,7 @@ calculate_Gcross3D <- function(spe,
                                radius,
                                feature_colname = "Cell.Type") {
   
+  ### Calculate the observed Gcross
   # Get the number of target cells in the radius around each reference cell
   cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood3D(spe,
                                                                   reference_cell_type,
@@ -16,6 +17,30 @@ calculate_Gcross3D <- function(spe,
   reference_target_interactions <- cells_in_neighbourhood_df[[target_cell_type]]
   
   # Gcross: essentially the proportion of reference cells with at least 1 target cell within the chosen radius.
-  result <- sum(reference_target_interactions != 0) / length(reference_target_interactions)
+  observed_Gcross <- sum(reference_target_interactions != 0) / length(reference_target_interactions)
+  
+  ### Calculate the expected Gcross
+  # Get rough dimensions of the window the points are in
+  spe_coords <- data.frame(spatialCoords(spe))
+  
+  length <- round(max(spe_coords$Cell.X.Position) - min(spe_coords$Cell.X.Position))
+  width  <- round(max(spe_coords$Cell.Y.Position) - min(spe_coords$Cell.Y.Position))
+  height <- round(max(spe_coords$Cell.Z.Position) - min(spe_coords$Cell.Z.Position))
+  
+  # Get volume of the window the cells are in
+  volume <- length * width * height
+  
+  # Get the number of target cells
+  n_target_cells <- sum(spe[[feature_colname]] == target_cell_type)
+  
+  # Get target_cell_type intensity (density)
+  target_cell_type_intensity <- n_target_cells / volume
+  
+  # Apply formula
+  expected_Gcross <- 1 - exp(-1 * target_cell_type_intensity * (4 / 3) * pi * radius^3)
+  
+  result <- data.frame(observed_Gcross = observed_Gcross,
+                       expected_Gcross = expected_Gcross)
+  
   return(result)
 }
