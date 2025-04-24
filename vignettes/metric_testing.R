@@ -18,10 +18,10 @@ generate_simulation_parameters_for_metric_testing <- function() {
                            "ellipsoid_y_radius" = list("fixed" = 100, "increasing" = seq(75, 125, 12.5), "type" = c("shape", "ellipsoid")),
                            "ellipsoid_z_radius" = list("fixed" = 125, "increasing" = seq(100, 150, 12.5), "type" = c("shape", "ellipsoid")),
                            "network_width" = list("fixed" = 30, "increasing" = seq(25, 35, 2.5), "type" = c("shape", "network")))
-
+  
   for (parameter in names(parameter_values)) {
     simulation_parameters[[parameter]] <- ifelse(simulation_parameters[[parameter_values[[parameter]]$type[1]]] == parameter_values[[parameter]]$type[2],
-                                                                 parameter_values[[parameter]][["fixed"]], NA)
+                                                 parameter_values[[parameter]][["fixed"]], NA)
   }
   
   variable_order <- c("mixed_cell_type_A_proportion", "ellipsoid_x_radius",
@@ -56,7 +56,7 @@ generate_simulation_parameters_for_metric_testing <- function() {
   ellipsoid_y_radii <- simulation_parameters[["ellipsoid_y_radius"]]
   ellipsoid_z_radii <- simulation_parameters[["ellipsoid_z_radius"]]
   network_widths <- simulation_parameters[["network_width"]]
-
+  
   ringed_ring_widths_ellipsoids <- ringed_ring_width_factors * 
     (ellipsoid_x_radii + ellipsoid_y_radii + ellipsoid_z_radii) / 3
   
@@ -160,7 +160,7 @@ generate_simulation_metadata_for_metric_testing <- function() {
         c(simulation_parameters$separated_cluster1_x_coordinate[index], 300, 150)
     }
   }
-
+  
   return(simulation_metadata)
 }
 
@@ -176,11 +176,11 @@ generate_and_analyse_simulations_for_metric_testing <- function() {
     curr_simulation <- simulate_spe_metadata3D(simulation_metadata[[i]], plot_image = FALSE)
     
     # Choose your metric here
-    metric_result <- calculate_Gcross_gradient3D(curr_simulation, 
-                                                 reference_cell_type = "A",
-                                                 target_cell_type = "B",
-                                                 radii = seq(10, 100, 10),
-                                                 plot_image = FALSE)
+    metric_result <- calculate_cross_G_gradient3D(curr_simulation, 
+                                                  reference_cell_type = "A",
+                                                  target_cell_type = "B",
+                                                  radii = seq(10, 100, 10),
+                                                  plot_image = FALSE)
     
     results[[i]] <- metric_result
   }
@@ -218,7 +218,7 @@ while (index <= nrow(parameters)) {
     auc <- calculate_auc(results[[curr_index]][["radius"]], results[[curr_index]][["observed_Gcross"]])   
     metric_values <- c(metric_values, auc)
   }
-
+  
   plot_df <- data.frame(parameter = parameter_values, metric = metric_values)
   
   plot <- ggplot(plot_df, aes(parameter, metric)) + 
@@ -239,7 +239,7 @@ grid.arrange(grobs = plots, nrow = 3, ncol = 4)
 # As is (not AUC)
 plots <- list()
 for (index in 51:55) {
-
+  
   curr_result <- results[[index]]
   
   plot <- plot_Gcross_gradient3D(curr_result)
