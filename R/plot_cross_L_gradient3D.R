@@ -13,7 +13,5 @@ plot_cross_L_gradient3D <- function(cross_L_gradient_df, reference_cell_type = N
     fig <- fig + labs(subtitle = paste("Reference: ", reference_cell_type, ", Target: ", target_cell_type, sep = ""))
   }
   
-  methods::show(fig)
-  
   return(fig) 
 }

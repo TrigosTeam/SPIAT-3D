@@ -29,7 +29,5 @@ plot_mixing_scores_gradient3D <- function(mixing_scores_gradient_df) {
   
   combined_fig <- plot_grid(fig1, fig2, nrow = 2)
   
-  methods::show(combined_fig)
-  
   return(combined_fig)
 }

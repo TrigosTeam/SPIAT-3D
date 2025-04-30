@@ -23,7 +23,5 @@ plot_entropy_gradient3D <- function(entropy_gradient_df, expected_entropy = NULL
     fig <- fig + labs(subtitle = paste("Reference: ", reference_cell_type, ", Target: ", target_cell_types, sep = ""))
   }
   
-  methods::show(fig)
-  
   return(fig)
 }

@@ -12,7 +12,5 @@ plot_cells_in_neighbourhood_gradient3D <- function(cells_in_neighbourhood_gradie
     fig <- fig + labs(subtitle = paste("Reference: ", reference_cell_type, ", Target: ", paste(colnames(cells_in_neighbourhood_gradient_df)[seq(ncol(cells_in_neighbourhood_gradient_df) - 1)], collapse = ", "), sep = ""))
   }
   
-  methods::show(fig)
-  
   return(fig)
 }

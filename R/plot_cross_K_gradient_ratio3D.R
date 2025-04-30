@@ -15,8 +15,6 @@ plot_cross_K_gradient_ratio3D <- function(cross_K_gradient_df, reference_cell_ty
   if (!is.null(reference_cell_type) && !is.null(target_cell_type)) {
     fig <- fig + labs(subtitle = paste("Reference: ", reference_cell_type, ", Target: ", target_cell_type, sep = ""))
   }
-  
-  methods::show(fig)
- 
+
   return(fig) 
 }

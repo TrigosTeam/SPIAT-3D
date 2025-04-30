@@ -11,7 +11,5 @@ plot_co_occurrence_gradient3D <- function(co_occurrence_gradient_df) {
     scale_colour_discrete(name = "", labels = target_cell_types) +
     theme_bw()
   
-  methods::show(fig)
-  
   return(fig) 
 }

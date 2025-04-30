@@ -11,8 +11,6 @@ plot_cross_G_gradient3D <- function(cross_G_gradient_df, reference_cell_type = N
   if (!is.null(reference_cell_type) && !is.null(target_cell_type)) {
     fig <- fig + labs(subtitle = paste("Reference: ", reference_cell_type, ", Target: ", target_cell_type, sep = ""))
   }
-  
-  methods::show(fig)
-  
+
   return(fig) 
 }
