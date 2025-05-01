@@ -1,20 +1,20 @@
-plot_cross_L_gradient_ratio3D <- function(cross_L_gradient_df, reference_cell_type = NULL, target_cell_type = NULL) {
+plot_cross_L_gradient_ratio3D <- function(cross_L_gradient_df) {
   
-  plot_result <- data.frame(radius = cross_L_gradient_df$radius,
-                            observed_cross_L_gradient_ratio = cross_L_gradient_df$cross_L_ratio,
-                            expected_cross_L_gradient_ratio = 1)
+  target_cell_types <- colnames(cross_L_gradient_df)[!colnames(cross_L_gradient_df) %in% c("reference", "expected", "radius")]
   
-  plot_result <- reshape2::melt(plot_result, "radius", c("observed_cross_L_gradient_ratio", "expected_cross_L_gradient_ratio"))
+  # Normalize columns by 'expected'
+  for (target_cell_type in target_cell_types) {
+    cross_L_gradient_df[[target_cell_type]] <- cross_L_gradient_df[[target_cell_type]] / cross_L_gradient_df$expected
+  }
+  cross_L_gradient_df$expected <- 1
+  
+  plot_result <- reshape2::melt(cross_L_gradient_df, "radius", c(target_cell_types, "expected"))
   
   fig <- ggplot(plot_result, aes(x = radius, y = value, color = variable)) +
     geom_line() +
-    labs(title = "Cross L-function ratio gradient", x = "Radius", y = "Cross L-function ratio") +
-    scale_colour_discrete(name = "", labels = c("Observed cross L ratio", "Expected CSR cross L ratio")) +
+    labs(title = "Cross L-function gradient ratio", x = "Radius", y = "Cross L-function ratio") +
+    scale_colour_discrete(name = "") +
     theme_bw()
-  
-  if (!is.null(reference_cell_type) && !is.null(target_cell_type)) {
-    fig <- fig + labs(subtitle = paste("Reference: ", reference_cell_type, ", Target: ", target_cell_type, sep = ""))
-  }
   
   return(fig) 
 }
