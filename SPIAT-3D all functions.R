@@ -98,18 +98,10 @@ calculate_all_gradient_cc_metrics3D <- function(spe,
                                                 feature_colname = "Cell.Type", 
                                                 plot_image = T) {
   
-  
-  ## Define result
-  result <- list("mixing_score" = list(),
-                 "cells_in_neighbourhood" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
-                 "cells_in_neighbourhood_proportion" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
-                 "entropy" = data.frame(matrix(nrow = length(radii), ncol = 1)),
-                 "cross_K" = list())
-  colnames(result[["cells_in_neighbourhood"]]) <- target_cell_types
-  colnames(result[["cells_in_neighbourhood_proportion"]]) <- target_cell_types
-  colnames(result[["entropy"]]) <- "entropy"
-  
-  # Define other constants
+  # Define constants
+  cross_K_df_colnames <- c("reference",
+                           "expected",
+                           target_cell_types)
   mixing_score_df_colnames <- c("ref_cell_type", 
                                 "tar_cell_type", 
                                 "n_ref_cells",
@@ -118,20 +110,35 @@ calculate_all_gradient_cc_metrics3D <- function(spe,
                                 "n_ref_ref_interactions", 
                                 "mixing_score", 
                                 "normalised_mixing_score")
-  cross_K_df_colnames <- c("ref_cell_type",
-                           "tar_cell_type",
-                           "observed_cross_K",
-                           "expected_cross_K",
-                           "cross_K_ratio")
+  cross_G_df_colnames <- c("observed_cross_G",
+                           "expected_cross_G")
+  co_occurrence_df_colnames <- c("reference",
+                                 target_cell_types)
   
-  # Define indiviudal data frames for mixing_score and cross_K
+  ## Define result
+  result <- list("mixing_score" = list(),
+                 "cells_in_neighbourhood" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
+                 "cells_in_neighbourhood_proportion" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
+                 "entropy" = data.frame(matrix(nrow = length(radii), ncol = 1)),
+                 "cross_K" = data.frame(matrix(nrow = length(radii), ncol = length(cross_K_df_colnames))),
+                 "cross_L" = data.frame(matrix(nrow = length(radii), ncol = length(cross_K_df_colnames))),
+                 "cross_G" = list(),
+                 "co_occurrence" = data.frame(matrix(nrow = length(radii), ncol = length(co_occurrence_df_colnames))))
+  colnames(result[["cells_in_neighbourhood"]]) <- target_cell_types
+  colnames(result[["cells_in_neighbourhood_proportion"]]) <- target_cell_types
+  colnames(result[["entropy"]]) <- "entropy"
+  colnames(result[["cross_K"]]) <- cross_K_df_colnames
+  colnames(result[["cross_L"]]) <- cross_K_df_colnames
+  colnames(result[["co_occurrence"]]) <- co_occurrence_df_colnames
+  
+  # Define individual data frames for mixing_score and cross_G
   for (target_cell_type in target_cell_types) {
     if (reference_cell_type != target_cell_type) {
       result[["mixing_score"]][[target_cell_type]] <- data.frame(matrix(nrow = length(radii), ncol = length(mixing_score_df_colnames)))
       colnames(result[["mixing_score"]][[target_cell_type]]) <- mixing_score_df_colnames
     }
-    result[["cross_K"]][[target_cell_type]] <- data.frame(matrix(nrow = length(radii), ncol = length(cross_K_df_colnames)))
-    colnames(result[["cross_K"]][[target_cell_type]]) <- cross_K_df_colnames
+    result[["cross_G"]][[target_cell_type]] <- data.frame(matrix(nrow = length(radii), ncol = length(cross_G_df_colnames)))
+    colnames(result[["cross_G"]][[target_cell_type]]) <- cross_G_df_colnames
   }
   
   # Get gradient results for each metric
@@ -149,13 +156,14 @@ calculate_all_gradient_cc_metrics3D <- function(spe,
     result[["cells_in_neighbourhood"]][i, ] <- apply(df[["cells_in_neighbourhood"]], 2, mean)
     result[["cells_in_neighbourhood_proportion"]][i, ] <- apply(df[["cells_in_neighbourhood_proportion"]][ , paste(target_cell_types, "_prop", sep = "")], 2, mean, na.rm = T)
     result[["entropy"]][i, "entropy"] <- mean(df[["entropy"]]$entropy, na.rm = T)
+    result[["cross_K"]][i, ] <- df[["cross_K"]]
+    result[["cross_L"]][i, ] <- df[["cross_L"]]
     
     for (target_cell_type in names(df[["mixing_score"]])) {
       result[["mixing_score"]][[target_cell_type]][i, ] <- df[["mixing_score"]][[target_cell_type]]
     }
-    
-    for (target_cell_type in names(df[["cross_K"]])) {
-      result[["cross_K"]][[target_cell_type]][i, ] <- df[["cross_K"]][[target_cell_type]]
+    for (target_cell_type in names(df[["cross_G"]])) {
+      result[["cross_G"]][[target_cell_type]][i, ] <- df[["cross_G"]][[target_cell_type]]
     }
   }
   
@@ -163,33 +171,56 @@ calculate_all_gradient_cc_metrics3D <- function(spe,
   result[["cells_in_neighbourhood"]]$radius <- radii
   result[["cells_in_neighbourhood_proportion"]]$radius <- radii
   result[["entropy"]]$radius <- radii
+  result[["cross_K"]]$radius <- radii
+  result[["cross_L"]]$radius <- radii
   for (target_cell_type in names(df[["mixing_score"]])) {
     result[["mixing_score"]][[target_cell_type]]$radius <- radii
   }
-  
-  for (target_cell_type in names(df[["cross_K"]])) {
-    result[["cross_K"]][[target_cell_type]]$radius <- radii
+  for (target_cell_type in names(df[["cross_G"]])) {
+    result[["cross_G"]][[target_cell_type]]$radius <- radii
   }
   
   
   ## Plot
   if (plot_image) {
-    plot_cells_in_neighbourhood_gradient3D(result[["cells_in_neighbourhood"]], target_cell_types)
-    plot_cells_in_neighbourhood_proportions_gradient3D(result[["cells_in_neighbourhood_proportion"]], target_cell_types)
-    expected_entropy <- calculate_entropy_background3D(spe, target_cell_types, feature_colname)
-    plot_entropy_gradient3D(result[["entropy"]], expected_entropy, reference_cell_type, target_cell_types)
+    fig_ACIN <- plot_cells_in_neighbourhood_gradient3D(result[["cells_in_neighbourhood"]], reference_cell_type)
+    methods::show(fig_ACIN)
     
-    for (target_cell_type in names(df[["mixing_score"]])) {
-      plot_mixing_scores_gradient3D(result[["mixing_score"]][[target_cell_type]])
+    fig_ACINP <- plot_cells_in_neighbourhood_proportions_gradient3D(result[["cells_in_neighbourhood_proportion"]], reference_cell_type)
+    methods::show(fig_ACINP)
+    
+    expected_entropy <- calculate_entropy_background3D(spatial_df, target_cell_types, feature_colname)
+    fig_AE <- plot_entropy_gradient3D(result[["entropy"]], expected_entropy, reference_cell_type, target_cell_types)
+    methods::show(fig_AE)
+    
+    for (target_cell_type in names(result[["mixing_score"]])) {
+      fig_NMS <- plot_mixing_scores_gradient3D(result[["mixing_score"]][[target_cell_type]], "NMS")
+      fig_MS <- plot_mixing_scores_gradient3D(result[["mixing_score"]][[target_cell_type]], "MS")
+      fig_NMS_MS <- plot_grid(fig_NMS, fig_MS, nrow = 2)
+      methods::show(fig_NMS_MS)
+    }
+    fig_CK <- plot_cross_K_gradient3D(result[["cross_K"]])
+    fig_CKR <- plot_cross_K_gradient_ratio3D(result[["cross_K"]])
+    fig_CK_CKR <- plot_grid(fig_CK, fig_CKR, nrow = 2)
+    methods::show(fig_CK_CKR)
+    
+    fig_CL <- plot_cross_L_gradient3D(result[["cross_L"]])
+    fig_CLR <- plot_cross_L_gradient_ratio3D(result[["cross_L"]])
+    fig_CL_CLR <- plot_grid(fig_CL, fig_CLR, nrow = 2)
+    methods::show(fig_CL_CLR)
+    
+    for (target_cell_type in names(result[["cross_G"]])) {
+      fig_CG <- plot_cross_G_gradient3D(result[["cross_G"]][[target_cell_type]], reference_cell_type, target_cell_type)
+      methods::show(fig_CG)
     }
     
-    for (target_cell_type in names(df[["cross_K"]])) {
-      plot_cross_K_gradient3D(result[["cross_K"]][[target_cell_type]], reference_cell_type, target_cell_type)
-    }
+    fig_co_occ <- plot_co_occurrence_gradient3D(result[["co_occurrence"]])
+    methods::show(fig_co_occ)
   }
   
   return(result)
 }
+
 ### Calculate all single radius cell-colocalisation metrics
 # If a function only requires one target cell type, iterate through each cell type in target_cell_types, else use all target_cell_types
 
@@ -236,7 +267,10 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
                  "cells_in_neighbourhood_proportion" = list(),
                  "entropy" = list(),
                  "mixing_score" = list(),
-                 "cross_K" = list())
+                 "cross_K" = list(),
+                 "cross_L" = list(),
+                 "cross_G" = list(),
+                 "co_occurrence" = list())
   
   # Define other constants
   mixing_score_df_colnames <- c("ref_cell_type", 
@@ -247,11 +281,14 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
                                 "n_ref_ref_interactions", 
                                 "mixing_score", 
                                 "normalised_mixing_score")
-  cross_K_df_colnames <- c("ref_cell_type",
-                           "tar_cell_type",
-                           "observed_cross_K",
-                           "expected_cross_K",
-                           "cross_K_ratio")
+  
+  cross_K_df_colnames <- c("reference",
+                           "expected",
+                           target_cell_types)
+  cross_G_df_colnames <- c("observed_cross_G",
+                           "expected_cross_G")
+  co_occurrence_df_colnames <- c("reference",
+                                 target_cell_types)
   
   # Get rough dimensions of window for cross_K
   spe_coords <- data.frame(spatialCoords(spe))
@@ -279,18 +316,12 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
   ## Entropy --------------
   result[["entropy"]] <- entropy_df
   
-  
-  ## These metrics focus on a particular cell type 
+  ## Mixing score -----------------
   for (target_cell_type in target_cell_types) {
     mixing_score_df <- data.frame(matrix(nrow = 1, ncol = length(mixing_score_df_colnames)))
     colnames(mixing_score_df) <- mixing_score_df_colnames
     mixing_score_df$ref_cell_type <- reference_cell_type
     
-    cross_K_df <- data.frame(matrix(nrow = 1, ncol = length(cross_K_df_colnames)))
-    colnames(cross_K_df) <- cross_K_df_colnames
-    cross_K_df$ref_cell_type <- reference_cell_type
-    
-    ## Mixing score -----------------
     # No need to fill in mixing_score_df if the reference and target cell is the same
     if (reference_cell_type != target_cell_type) {
       mixing_score_df$tar_cell_type <- target_cell_type
@@ -304,17 +335,70 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
       if (is.infinite(mixing_score_df$normalised_mixing_score)) mixing_score_df$normalised_mixing_score <- NA
       result[["mixing_score"]][[target_cell_type]] <- mixing_score_df
     }
-    
-    ## Cross_K ---------------------
-    cross_K_df$tar_cell_type <- target_cell_type
-    cross_K_df$observed_cross_K <- (((volume * sum(entropy_df[[target_cell_type]])) / sum(df[[feature_colname]] == reference_cell_type)) / sum(df[[feature_colname]] == target_cell_type))
-    cross_K_df$expected_cross_K <- (4/3) * pi * radius^3
-    cross_K_df$cross_K_ratio <- cross_K_df$observed_cross_K / cross_K_df$expected_cross_K
-    result[["cross_K"]][[target_cell_type]] <- cross_K_df
   }
+  
+  ## Cross_K ---------------------
+  cross_K_df <- data.frame(matrix(nrow = 1, ncol = length(cross_K_df_colnames)))
+  colnames(cross_K_df) <- cross_K_df_colnames
+  cross_K_df$reference <- reference_cell_type
+  cross_K_df$expected <- (4/3) * pi * radius^3
+  
+  for (target_cell_type in target_cell_types) {
+    cross_K_df[[target_cell_type]] <- (((volume * sum(entropy_df[[target_cell_type]])) / sum(spe[[feature_colname]] == reference_cell_type)) / sum(spe[[feature_colname]] == target_cell_type)) 
+  }
+  result[["cross_K"]] <- cross_K_df
+  
+  ## Cross_L ---------------------
+  cross_L_df <- cross_K_df
+  cross_L_df[ , c("expected", target_cell_types)] <- (cross_L_df[ , c("expected", target_cell_types)] / (4 * pi / 3)) ^ (1/3)
+  result[["cross_L"]] <- cross_L_df
+  
+  ## Cross_G ---------------------
+  for (target_cell_type in target_cell_types) {
+    cross_G_df <- data.frame(matrix(nrow = 1, ncol = length(cross_G_df_colnames)))
+    colnames(cross_G_df) <- cross_G_df_colnames
+    
+    reference_target_interactions <- entropy_df[[target_cell_type]]
+    n_target_cells <- sum(spe[[feature_colname]] == target_cell_type)
+    target_cell_type_intensity <- n_target_cells / volume
+    observed_cross_G <- sum(reference_target_interactions != 0) / length(reference_target_interactions)
+    expected_cross_G <- 1 - exp(-1 * target_cell_type_intensity * (4 / 3) * pi * radius^3)
+    
+    cross_G_df$observed_cross_G <- observed_cross_G
+    cross_G_df$expected_cross_G <- expected_cross_G
+    result[["cross_G"]][[target_cell_type]] <- cross_G_df
+  }
+  
+  
+  ## Co_occurrence ---------------
+  all_cell_types <- unique(spe[[feature_colname]])
+  cells_in_neighbourhood_proportions_df <- calculate_cells_in_neighbourhood_proportions3D(spe,
+                                                                                          reference_cell_type,
+                                                                                          all_cell_types,
+                                                                                          radius,
+                                                                                          feature_colname)
+  
+  co_occurrence_df <- data.frame(matrix(nrow = 1, ncol = length(co_occurrence_df_colnames)))
+  colnames(co_occurrence_df) <- co_occurrence_df_colnames
+  co_occurrence_df$reference <- reference_cell_type
+  
+  n_cells_in_spe <- length(spe[[feature_colname]])
+  n_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_proportions_df$total)
+  
+  for (target_cell_type in target_cell_types) {
+    n_target_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_proportions_df[[target_cell_type]])
+    target_cell_type_proportion_in_reference_cell_type_radius <- n_target_cells_in_reference_cell_type_radius / n_cells_in_reference_cell_type_radius
+    n_target_cells_in_spe <- sum(spe[[feature_colname]] == target_cell_type)
+    target_cell_type_proportion_in_spe <- n_target_cells_in_spe / n_cells_in_spe
+    target_cell_type_co_occurrence <- target_cell_type_proportion_in_reference_cell_type_radius / target_cell_type_proportion_in_spe
+    
+    co_occurrence_df[[target_cell_type]] <- target_cell_type_co_occurrence
+  }
+  result[["co_occurrence"]] <- co_occurrence_df
   
   return(result)
 }
+
 calculate_border_of_clusters3D <- function(spe, 
                                            radius,
                                            cluster_colname, 
@@ -639,10 +723,14 @@ calculate_cells_in_neighbourhood_gradient3D <- function(spe,
   # Add a radius column to the result
   result$radius <- radii
   
-  if (plot_image) plot_cells_in_neighbourhood_gradient3D(result, reference_cell_type)
+  if (plot_image) {
+    fig <- plot_cells_in_neighbourhood_gradient3D(result, reference_cell_type)
+    methods::show(fig)
+  }
   
   return(result)
 }
+
 calculate_cells_in_neighbourhood_proportions_gradient3D <- function(spe, 
                                                                     reference_cell_type, 
                                                                     target_cell_types, 
@@ -673,10 +761,14 @@ calculate_cells_in_neighbourhood_proportions_gradient3D <- function(spe,
   result$radius <- radii
   
   # Plot
-  if (plot_image) plot_cells_in_neighbourhood_proportions_gradient3D(result, reference_cell_type)
+  if (plot_image) {
+    fig <- plot_cells_in_neighbourhood_proportions_gradient3D(result, reference_cell_type)
+    methods::show(fig)
+  }
   
   return(result)
 }
+
 calculate_cells_in_neighbourhood_proportions3D <- function(spe, 
                                                            reference_cell_type, 
                                                            target_cell_types, 
@@ -1128,15 +1220,16 @@ calculate_cross_L_gradient3D <- function(spe,
   result$radius <- radii
   
   if (plot_image) {
-    fig1 <- plot_cross_gradient3D(result, 'L')
-    fig2 <- plot_cross_gradient_ratio3D(result, 'L')
+    fig1 <- plot_cross_L_gradient3D(result)
+    fig2 <- plot_cross_L_gradient_ratio3D(result)
     
     combined_fig <- plot_grid(fig1, fig2, nrow = 2)
     methods::show(combined_fig)
   }
   
   return(result)
-}calculate_cross_L3D <- function(spe, 
+}
+calculate_cross_L3D <- function(spe, 
                                  reference_cell_type, 
                                  target_cell_types, 
                                  radius, 
@@ -1157,7 +1250,7 @@ calculate_entropy_background3D <- function(spe,
                                            feature_colname = "Cell.Type") {
   
   # NULL case: entropy is undefined
-  if (is.null(cell_types_of_interest) == 0) return(NA)
+  if (is.null(cell_types_of_interest)) return(NA)
   
   # One cell type case: entropy is 0
   if (is.character(cell_types_of_interest) && length(cell_types_of_interest) == 1) return(0)
@@ -1169,6 +1262,7 @@ calculate_entropy_background3D <- function(spe,
   
   return(entropy) 
 }
+
 calculate_entropy_gradient3D <- function(spe,
                                          reference_cell_type,
                                          target_cell_types,
@@ -1200,11 +1294,13 @@ calculate_entropy_gradient3D <- function(spe,
   
   if (plot_image) {
     expected_entropy <- calculate_entropy_background3D(spe, target_cell_types, feature_colname)
-    plot_entropy_gradient3D(result, expected_entropy, reference_cell_type, target_cell_types)
+    fig <- plot_entropy_gradient3D(result, expected_entropy, reference_cell_type, target_cell_types)
+    methods::show(fig)
   }
   
   return(result)
 }
+
 calculate_entropy_grid_metrics3D <- function(spe, 
                                              n_splits,
                                              cell_types_of_interest,
@@ -1694,10 +1790,16 @@ calculate_mixing_scores_gradient3D <- function(spe,
   # Add a radius column to the result
   result$radius <- radii
   
-  if (plot_image) plot_mixing_scores_gradient3D(result)
+  if (plot_image) {
+    fig1 <- plot_mixing_scores_gradient3D(result, "NMS")
+    fig2 <- plot_mixing_scores_gradient3D(result, "MS")
+    combined_fig <- plot_grid(fig1, fig2, nrow = 2)
+    methods::show(combined_fig)
+  }
   
   return(result)
 }
+
 calculate_mixing_scores3D <- function(spe, 
                                       reference_cell_types, 
                                       target_cell_types, 
@@ -2432,7 +2534,8 @@ grid_based_cluster_recursion3D <- function(df,  # Using a df is much faster than
   else {
     return(data.frame())
   }
-}grid_based_clustering3D <- function(spe,
+}
+grid_based_clustering3D <- function(spe,
                                      cell_types_of_interest,
                                      n_splits,
                                      minimum_cells_in_cluster,
@@ -2614,7 +2717,8 @@ grid_based_cluster_recursion3D <- function(df,  # Using a df is much faster than
   }
   
   return(spe)
-}plot_alpha_hull_clusters3D <- function(spe_with_alpha_hull, 
+}
+plot_alpha_hull_clusters3D <- function(spe_with_alpha_hull, 
                                         plot_cell_types = NULL,
                                         plot_colours = NULL,
                                         feature_colname = "Cell.Type") {
@@ -2853,7 +2957,8 @@ plot_cells3D <- function(spe,
                                                   titlefont = list(size = 20), tickfont = list(size = 15))))
   
   return(fig)
-}plot_co_occurrence_gradient3D <- function(co_occurrence_gradient_df) {
+}
+plot_co_occurrence_gradient3D <- function(co_occurrence_gradient_df) {
   
   target_cell_types <- colnames(co_occurrence_gradient_df)
   target_cell_types <- target_cell_types[!target_cell_types %in% c("reference", "radius")]
@@ -3167,39 +3272,43 @@ plot_grid_metrics_discrete3D <- function(grid_metrics, metric_colname) {
                                      zaxis = list(title = 'z')))
   return(fig)
 }
-plot_mixing_scores_gradient3D <- function(mixing_scores_gradient_df) {
+plot_mixing_scores_gradient3D <- function(mixing_scores_gradient_df, metric = "MS") {
   
-  plot_result1 <- mixing_scores_gradient_df
-  plot_result1$expected_normalised_mixing_score <- 1
-  plot_result1 <- reshape2::melt(plot_result1, "radius", c("normalised_mixing_score", "expected_normalised_mixing_score"))
+  if (!metric %in% c("MS", "NMS")) {
+    stop("'metric' should be 'MS' or 'NMS', for mixing score and normalised mixing score respectively.")
+  }
   
-  fig1 <- ggplot(plot_result1, aes(x = radius, y = value, color = variable)) +
-    geom_line() +
-    labs(title = "Normalised mixing score (NMS) gradient", 
-         subtitle = paste("Reference: ", mixing_scores_gradient_df$ref_cell_type[1], ", Target: ", mixing_scores_gradient_df$tar_cell_type[1], sep = ""), 
-         x = "Radius", y = "NMS") +
-    scale_colour_discrete(name = "", labels = c("Observed NMS", "Expected CSR NMS")) +
-    theme_bw()
-  
-  
-  plot_result2 <- mixing_scores_gradient_df
-  n_tar_cells <- plot_result2$n_tar_cells[1]
-  n_ref_cells <- plot_result2$n_ref_cells[1]
-  plot_result2$expected_mixing_score <- n_tar_cells * n_ref_cells / ((n_ref_cells - 1) * n_ref_cells / 2)
-  plot_result2 <- reshape2::melt(plot_result2, "radius", c("mixing_score", "expected_mixing_score"))
-  
-  fig2 <- ggplot(plot_result2, aes(x = radius, y = value, color = variable)) +
-    geom_line() +
-    labs(title = "Mixing score (MS) gradient", 
-         subtitle = paste("Reference: ", mixing_scores_gradient_df$ref_cell_type[1], ", Target: ", mixing_scores_gradient_df$tar_cell_type[1], sep = ""), 
-         x = "Radius", y = "MS") +
-    scale_colour_discrete(name = "", labels = c("Observed MS", "Expected CSR MS  ")) +
-    theme_bw()
-  
-  combined_fig <- plot_grid(fig1, fig2, nrow = 2)
-  
-  return(combined_fig)
+  if (metric == "NMS") {
+    plot_result <- mixing_scores_gradient_df
+    plot_result$expected_normalised_mixing_score <- 1
+    plot_result <- reshape2::melt(plot_result, "radius", c("normalised_mixing_score", "expected_normalised_mixing_score"))
+    
+    fig <- ggplot(plot_result, aes(x = radius, y = value, color = variable)) +
+      geom_line() +
+      labs(title = "Normalised mixing score (NMS) gradient", 
+           subtitle = paste("Reference: ", mixing_scores_gradient_df$ref_cell_type[1], ", Target: ", mixing_scores_gradient_df$tar_cell_type[1], sep = ""), 
+           x = "Radius", y = "NMS") +
+      scale_colour_discrete(name = "", labels = c("Observed NMS", "Expected CSR NMS")) +
+      theme_bw() 
+  }
+  else if (metric == "MS") {
+    plot_result <- mixing_scores_gradient_df
+    n_tar_cells <- plot_result$n_tar_cells[1]
+    n_ref_cells <- plot_result$n_ref_cells[1]
+    plot_result$expected_mixing_score <- n_tar_cells * n_ref_cells / ((n_ref_cells - 1) * n_ref_cells / 2)
+    plot_result <- reshape2::melt(plot_result, "radius", c("mixing_score", "expected_mixing_score"))
+    
+    fig <- ggplot(plot_result, aes(x = radius, y = value, color = variable)) +
+      geom_line() +
+      labs(title = "Mixing score (MS) gradient", 
+           subtitle = paste("Reference: ", mixing_scores_gradient_df$ref_cell_type[1], ", Target: ", mixing_scores_gradient_df$tar_cell_type[1], sep = ""), 
+           x = "Radius", y = "MS") +
+      scale_colour_discrete(name = "", labels = c("Observed MS", "Expected CSR MS  ")) +
+      theme_bw()  
+  }
+  return(fig)
 }
+
 summarise_cells_in_neighbourhood3D <- function(cells_in_neighbourhood_df) {
   
   ## Target cell types will be all the columns except the first column

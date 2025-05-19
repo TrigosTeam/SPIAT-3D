@@ -44,7 +44,10 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
                  "cells_in_neighbourhood_proportion" = list(),
                  "entropy" = list(),
                  "mixing_score" = list(),
-                 "cross_K" = list())
+                 "cross_K" = list(),
+                 "cross_L" = list(),
+                 "cross_G" = list(),
+                 "co_occurrence" = list())
   
   # Define other constants
   mixing_score_df_colnames <- c("ref_cell_type", 
@@ -55,11 +58,14 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
                                 "n_ref_ref_interactions", 
                                 "mixing_score", 
                                 "normalised_mixing_score")
-  cross_K_df_colnames <- c("ref_cell_type",
-                           "tar_cell_type",
-                           "observed_cross_K",
-                           "expected_cross_K",
-                           "cross_K_ratio")
+  
+  cross_K_df_colnames <- c("reference",
+                           "expected",
+                           target_cell_types)
+  cross_G_df_colnames <- c("observed_cross_G",
+                           "expected_cross_G")
+  co_occurrence_df_colnames <- c("reference",
+                                 target_cell_types)
 
   # Get rough dimensions of window for cross_K
   spe_coords <- data.frame(spatialCoords(spe))
@@ -87,18 +93,12 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
   ## Entropy --------------
   result[["entropy"]] <- entropy_df
   
-  
-  ## These metrics focus on a particular cell type 
+  ## Mixing score -----------------
   for (target_cell_type in target_cell_types) {
     mixing_score_df <- data.frame(matrix(nrow = 1, ncol = length(mixing_score_df_colnames)))
     colnames(mixing_score_df) <- mixing_score_df_colnames
     mixing_score_df$ref_cell_type <- reference_cell_type
     
-    cross_K_df <- data.frame(matrix(nrow = 1, ncol = length(cross_K_df_colnames)))
-    colnames(cross_K_df) <- cross_K_df_colnames
-    cross_K_df$ref_cell_type <- reference_cell_type
-    
-    ## Mixing score -----------------
     # No need to fill in mixing_score_df if the reference and target cell is the same
     if (reference_cell_type != target_cell_type) {
       mixing_score_df$tar_cell_type <- target_cell_type
@@ -112,14 +112,66 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
       if (is.infinite(mixing_score_df$normalised_mixing_score)) mixing_score_df$normalised_mixing_score <- NA
       result[["mixing_score"]][[target_cell_type]] <- mixing_score_df
     }
-    
-    ## Cross_K ---------------------
-    cross_K_df$tar_cell_type <- target_cell_type
-    cross_K_df$observed_cross_K <- (((volume * sum(entropy_df[[target_cell_type]])) / sum(df[[feature_colname]] == reference_cell_type)) / sum(df[[feature_colname]] == target_cell_type))
-    cross_K_df$expected_cross_K <- (4/3) * pi * radius^3
-    cross_K_df$cross_K_ratio <- cross_K_df$observed_cross_K / cross_K_df$expected_cross_K
-    result[["cross_K"]][[target_cell_type]] <- cross_K_df
   }
+  
+  ## Cross_K ---------------------
+  cross_K_df <- data.frame(matrix(nrow = 1, ncol = length(cross_K_df_colnames)))
+  colnames(cross_K_df) <- cross_K_df_colnames
+  cross_K_df$reference <- reference_cell_type
+  cross_K_df$expected <- (4/3) * pi * radius^3
+  
+  for (target_cell_type in target_cell_types) {
+    cross_K_df[[target_cell_type]] <- (((volume * sum(entropy_df[[target_cell_type]])) / sum(spe[[feature_colname]] == reference_cell_type)) / sum(spe[[feature_colname]] == target_cell_type)) 
+  }
+  result[["cross_K"]] <- cross_K_df
+  
+  ## Cross_L ---------------------
+  cross_L_df <- cross_K_df
+  cross_L_df[ , c("expected", target_cell_types)] <- (cross_L_df[ , c("expected", target_cell_types)] / (4 * pi / 3)) ^ (1/3)
+  result[["cross_L"]] <- cross_L_df
+  
+  ## Cross_G ---------------------
+  for (target_cell_type in target_cell_types) {
+    cross_G_df <- data.frame(matrix(nrow = 1, ncol = length(cross_G_df_colnames)))
+    colnames(cross_G_df) <- cross_G_df_colnames
+    
+    reference_target_interactions <- entropy_df[[target_cell_type]]
+    n_target_cells <- sum(spe[[feature_colname]] == target_cell_type)
+    target_cell_type_intensity <- n_target_cells / volume
+    observed_cross_G <- sum(reference_target_interactions != 0) / length(reference_target_interactions)
+    expected_cross_G <- 1 - exp(-1 * target_cell_type_intensity * (4 / 3) * pi * radius^3)
+    
+    cross_G_df$observed_cross_G <- observed_cross_G
+    cross_G_df$expected_cross_G <- expected_cross_G
+    result[["cross_G"]][[target_cell_type]] <- cross_G_df
+  }
+  
+  
+  ## Co_occurrence ---------------
+  all_cell_types <- unique(spe[[feature_colname]])
+  cells_in_neighbourhood_proportions_df <- calculate_cells_in_neighbourhood_proportions3D(spe,
+                                                                                          reference_cell_type,
+                                                                                          all_cell_types,
+                                                                                          radius,
+                                                                                          feature_colname)
+  
+  co_occurrence_df <- data.frame(matrix(nrow = 1, ncol = length(co_occurrence_df_colnames)))
+  colnames(co_occurrence_df) <- co_occurrence_df_colnames
+  co_occurrence_df$reference <- reference_cell_type
+  
+  n_cells_in_spe <- length(spe[[feature_colname]])
+  n_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_proportions_df$total)
+  
+  for (target_cell_type in target_cell_types) {
+    n_target_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_proportions_df[[target_cell_type]])
+    target_cell_type_proportion_in_reference_cell_type_radius <- n_target_cells_in_reference_cell_type_radius / n_cells_in_reference_cell_type_radius
+    n_target_cells_in_spe <- sum(spe[[feature_colname]] == target_cell_type)
+    target_cell_type_proportion_in_spe <- n_target_cells_in_spe / n_cells_in_spe
+    target_cell_type_co_occurrence <- target_cell_type_proportion_in_reference_cell_type_radius / target_cell_type_proportion_in_spe
+    
+    co_occurrence_df[[target_cell_type]] <- target_cell_type_co_occurrence
+  }
+  result[["co_occurrence"]] <- co_occurrence_df
   
   return(result)
 }

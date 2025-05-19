@@ -32,7 +32,12 @@ calculate_mixing_scores_gradient3D <- function(spe,
   # Add a radius column to the result
   result$radius <- radii
   
-  if (plot_image) plot_mixing_scores_gradient3D(result)
+  if (plot_image) {
+    fig1 <- plot_mixing_scores_gradient3D(result, "NMS")
+    fig2 <- plot_mixing_scores_gradient3D(result, "MS")
+    combined_fig <- plot_grid(fig1, fig2, nrow = 2)
+    methods::show(combined_fig)
+  }
   
   return(result)
 }
