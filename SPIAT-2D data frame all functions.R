@@ -653,8 +653,6 @@ calculate_cells_in_neighbourhood2D <- function(spatial_df,
     result[[target_cell_type]] <- n_targets
   }
   
-  result <- data.frame(ref_cell_id = spatial_df$Cell.ID[spatial_df[[feature_colname]] == reference_cell_type], result)
-  
   ## Print summary
   if (show_summary) {
     print(summarise_cells_in_neighbourhood2D(result))    

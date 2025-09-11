@@ -649,8 +649,6 @@ calculate_cells_in_neighbourhood2D <- function(spe,
     result[[target_cell_type]] <- n_targets
   }
   
-  result <- data.frame(ref_cell_id = spe$Cell.ID[spe[[feature_colname]] == reference_cell_type], result)
-  
   ## Print summary
   if (show_summary) {
     print(summarise_cells_in_neighbourhood2D(result))    

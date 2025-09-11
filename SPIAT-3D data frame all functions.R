@@ -789,7 +789,7 @@ calculate_cells_in_neighbourhood_proportions3D <- function(spatial_df,
   
   ## Get total number of target cells for each row (first column is the reference cell id column, so we exclude it)
   cells_in_neighbourhood_df$total <- apply(cells_in_neighbourhood_df[ , c(-1)], 1, sum)
-  
+
   cells_in_neighbourhood_df[ , paste(target_cell_types, "_prop", sep = "")] <- cells_in_neighbourhood_df[ , target_cell_types] / cells_in_neighbourhood_df$total
   
   return(cells_in_neighbourhood_df)
@@ -879,7 +879,7 @@ calculate_cells_in_neighbourhood3D <- function(spatial_df,
     ## Add to data frame
     result[[target_cell_type]] <- n_targets
   }
-  
+
   ## Print summary
   if (show_summary) {
     print(summarise_cells_in_neighbourhood3D(result))    
