@@ -1,6 +1,6 @@
 library(SpatialExperiment)
 library(dbscan)
-library(alphashape2D)
+
 library(apcluster)
 library(plotly)
 library(dplyr)
@@ -8,7 +8,7 @@ library(reshape2)
 library(gtools)
 library(cowplot)
 library(Hmisc)
-library(alphashape2D)
+
 
 calculate_all_gradient_cc_metrics2D <- function(spatial_df, 
                                                 reference_cell_type, 
