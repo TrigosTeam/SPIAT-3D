@@ -852,7 +852,7 @@ calculate_cells_in_neighbourhood3D <- function(spatial_df,
   # Get reference_cell_type coords
   reference_cell_type_coords <- spatial_df_coords[spatial_df[[feature_colname]] == reference_cell_type, ]
   
-  result <- data.frame(matrix(nrow = nrow(reference_cell_type_coords), ncol = 0))
+  result <- data.frame(ref_cell_id = spatial_df$Cell.ID[spatial_df[[feature_colname]] == reference_cell_type])
   
   for (target_cell_type in target_cell_types) {
     
@@ -879,8 +879,6 @@ calculate_cells_in_neighbourhood3D <- function(spatial_df,
     ## Add to data frame
     result[[target_cell_type]] <- n_targets
   }
-  
-  result <- data.frame(ref_cell_id = spatial_df$Cell.ID[spatial_df[[feature_colname]] == reference_cell_type], result)
   
   ## Print summary
   if (show_summary) {
