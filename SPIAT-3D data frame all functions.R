@@ -2416,8 +2416,9 @@ get_spatial_df_grid_metrics3D <- function(spatial_df,
   ## Determine the cell types found in each grid prism
   n_grid_prisms <- n_splits^3
   grid_prism_cell_matrix <- as.data.frame.matrix(table(spatial_df[[feature_colname]], factor(spatial_df$grid_prism_num, levels = seq(n_grid_prisms))))
+
   grid_prism_cell_matrix <- data.frame(grid_prism_num = seq(n_grid_prisms),
-                                       t(grid_prism_cell_matrix))
+                                       t(grid_prism_cell_matrix), check.names = FALSE)
   
   ## Determine centre coordinates of each grid prism
   grid_prism_coordinates <- data.frame(grid_prism_num = seq(n_grid_prisms),
