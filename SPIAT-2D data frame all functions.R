@@ -221,7 +221,7 @@ calculate_all_single_radius_cc_metrics2D <- function(spatial_df,
                                     target_cell_types, 
                                     radius, 
                                     feature_colname)  
-  
+
   ## Cells in neighbourhood ----------
   result[["cells_in_neighbourhood"]] <- entropy_df[ , c("ref_cell_id", target_cell_types)]
   
@@ -1130,11 +1130,17 @@ calculate_entropy2D <- function(spatial_df,
                                                                                          feature_colname)
   
   if (is.null(cells_in_neighbourhood_proportion_df)) return(NULL)
-  
+
   ## Get entropy for each row
-  cells_in_neighbourhood_proportion_df$entropy <- apply(cells_in_neighbourhood_proportion_df[ , paste(target_cell_types, "_prop", sep = "")],
-                                                        1,
-                                                        function(x) -1 * sum(x * log(x, length(target_cell_types))))
+  cells_in_neighbourhood_proportion_df$entropy <- apply(
+    cells_in_neighbourhood_proportion_df[, paste(target_cell_types, "_prop", sep = "")],
+    1,
+    function(x) {
+      x <- x[!is.na(x)]  # Remove NA values
+      if (length(x) == 0) return(NA)  # Return NA if all values were NA
+      -1 * sum(x * log(x, base = length(target_cell_types)))
+    }
+  )
   cells_in_neighbourhood_proportion_df$entropy <- ifelse(cells_in_neighbourhood_proportion_df$total > 0 & is.nan(cells_in_neighbourhood_proportion_df$entropy), 
                                                          0,
                                                          cells_in_neighbourhood_proportion_df$entropy)
