@@ -126,14 +126,14 @@ calculate_all_gradient_cc_metrics3D <- function(spatial_df,
   result <- list("mixing_score" = list(),
                  "cells_in_neighbourhood" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
                  "cells_in_neighbourhood_proportion" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
-                 "entropy" = data.frame(matrix(nrow = length(radii), ncol = 1)),
+                 "entropy" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
                  "cross_K" = data.frame(matrix(nrow = length(radii), ncol = length(cross_K_df_colnames))),
                  "cross_L" = data.frame(matrix(nrow = length(radii), ncol = length(cross_K_df_colnames))),
                  "cross_G" = list(),
                  "co_occurrence" = data.frame(matrix(nrow = length(radii), ncol = length(co_occurrence_df_colnames))))
   colnames(result[["cells_in_neighbourhood"]]) <- target_cell_types
   colnames(result[["cells_in_neighbourhood_proportion"]]) <- target_cell_types
-  colnames(result[["entropy"]]) <- "entropy"
+  colnames(result[["entropy"]]) <- target_cell_types
   colnames(result[["cross_K"]]) <- cross_K_df_colnames
   colnames(result[["cross_L"]]) <- cross_K_df_colnames
   colnames(result[["co_occurrence"]]) <- co_occurrence_df_colnames
@@ -162,7 +162,7 @@ calculate_all_gradient_cc_metrics3D <- function(spatial_df,
     
     result[["cells_in_neighbourhood"]][i, ] <- apply(df[["cells_in_neighbourhood"]], 2, mean)
     result[["cells_in_neighbourhood_proportion"]][i, ] <- apply(df[["cells_in_neighbourhood_proportion"]][ , paste(target_cell_types, "_prop", sep = "")], 2, mean, na.rm = T)
-    result[["entropy"]][i, "entropy"] <- mean(df[["entropy"]]$entropy, na.rm = T)
+    result[["entropy"]][i, "entropy"] <- apply(df[["entropy"]][ , paste(target_cell_types, "_entropy", sep = "")], 2, mean, na.rm = T)
     result[["cross_K"]][i, ] <- df[["cross_K"]]
     result[["cross_L"]][i, ] <- df[["cross_L"]]
     result[["co_occurrence"]][i, ] <- df[["co_occurrence"]]
@@ -314,10 +314,10 @@ calculate_all_single_radius_cc_metrics3D <- function(spatial_df,
   result[["cells_in_neighbourhood"]] <- entropy_df[ , c("ref_cell_id", target_cell_types)]
   
   ## Cells in neighbourhood proportion ----------
-  result[["cells_in_neighbourhood_proportion"]] <- entropy_df[ , c("ref_cell_id", target_cell_types, paste(target_cell_types, "_prop", sep = ""))]
+  result[["cells_in_neighbourhood_proportion"]] <- entropy_df[ , c("ref_cell_id", paste(target_cell_types, "_prop", sep = ""))]
   
   ## Entropy --------------
-  result[["entropy"]] <- entropy_df
+  result[["entropy"]] <- entropy_df[ , c("ref_cell_id", paste(target_cell_types, "_entropy", sep = ""))]
   
   ## Mixing score -----------------
   for (target_cell_type in target_cell_types) {
@@ -374,21 +374,25 @@ calculate_all_single_radius_cc_metrics3D <- function(spatial_df,
   
   ## Co_occurrence ---------------
   all_cell_types <- unique(spatial_df[[feature_colname]])
-  cells_in_neighbourhood_proportions_df <- calculate_cells_in_neighbourhood_proportions3D(spatial_df,
-                                                                                          reference_cell_type,
-                                                                                          all_cell_types,
-                                                                                          radius,
-                                                                                          feature_colname)
+  cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood3D(spatial_df,
+                                                                  reference_cell_type,
+                                                                  all_cell_types,
+                                                                  radius,
+                                                                  feature_colname,
+                                                                  F,
+                                                                  F)
+  
+  cells_in_neighbourhood_df$total <- rowSums(cells_in_neighbourhood_df[, -1], na.rm = TRUE)
   
   co_occurrence_df <- data.frame(matrix(nrow = 1, ncol = length(co_occurrence_df_colnames)))
   colnames(co_occurrence_df) <- co_occurrence_df_colnames
   co_occurrence_df$reference <- reference_cell_type
   
   n_cells_in_spe <- length(spatial_df[[feature_colname]])
-  n_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_proportions_df$total)
+  n_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_df$total)
   
   for (target_cell_type in target_cell_types) {
-    n_target_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_proportions_df[[target_cell_type]])
+    n_target_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_df[[target_cell_type]])
     target_cell_type_proportion_in_reference_cell_type_radius <- n_target_cells_in_reference_cell_type_radius / n_cells_in_reference_cell_type_radius
     n_target_cells_in_spe <- sum(spatial_df[[feature_colname]] == target_cell_type)
     target_cell_type_proportion_in_spe <- n_target_cells_in_spe / n_cells_in_spe
@@ -779,7 +783,7 @@ calculate_cells_in_neighbourhood_proportions3D <- function(spatial_df,
   ## Get cells in neighbourhood df
   cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood3D(spatial_df,
                                                                   reference_cell_type,
-                                                                  target_cell_types,
+                                                                  c(reference_cell_type, target_cell_types),
                                                                   radius,
                                                                   feature_colname,
                                                                   FALSE,
@@ -787,12 +791,13 @@ calculate_cells_in_neighbourhood_proportions3D <- function(spatial_df,
   
   if (is.null(cells_in_neighbourhood_df)) return(NULL)
   
-  ## Get total number of target cells for each row (first column is the reference cell id column, so we exclude it)
-  cells_in_neighbourhood_df$total <- apply(cells_in_neighbourhood_df[, -1], 1, function(row) {
-    sum(as.numeric(row), na.rm = TRUE)
-  })
+  cells_in_neighbourhood_df[ , paste(target_cell_types, "_prop", sep = "")] <- 
+    cells_in_neighbourhood_df[ , target_cell_types] / (cells_in_neighbourhood_df[ , target_cell_types] + cells_in_neighbourhood_df[ , reference_cell_type])
 
-  cells_in_neighbourhood_df[ , paste(target_cell_types, "_prop", sep = "")] <- cells_in_neighbourhood_df[ , target_cell_types] / cells_in_neighbourhood_df$total
+  # If reference cell type is in target cell types, proportion should be 1
+  if (reference_cell_type %in% target_cell_types) {
+    cells_in_neighbourhood_df[cells_in_neighbourhood_df[[reference_cell_type]] != 0, paste(reference_cell_type, "_prop", sep = "")] <- 1
+  }
   
   return(cells_in_neighbourhood_df)
 }
@@ -973,11 +978,15 @@ calculate_co_occurrence3D <- function(spatial_df,
   # Get all cell types in spatial_df
   all_cell_types <- unique(spatial_df[[feature_colname]])
   
-  cells_in_neighbourhood_proportions_df <- calculate_cells_in_neighbourhood_proportions3D(spatial_df,
-                                                                                          reference_cell_type,
-                                                                                          all_cell_types,
-                                                                                          radius,
-                                                                                          feature_colname)
+  cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood3D(spatial_df,
+                                                                  reference_cell_type,
+                                                                  all_cell_types,
+                                                                  radius,
+                                                                  feature_colname,
+                                                                  F,
+                                                                  F)
+  
+  cells_in_neighbourhood_df$total <- rowSums(cells_in_neighbourhood_df[, -1], na.rm = TRUE)
   
   result <- data.frame(reference = reference_cell_type)
   
@@ -985,12 +994,12 @@ calculate_co_occurrence3D <- function(spatial_df,
   n_cells_in_spatial_df <- length(spatial_df[[feature_colname]])
   
   # Get total number of cells in radius around reference cell type
-  n_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_proportions_df$total)
+  n_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_df$total)
   
   for (target_cell_type in target_cell_types) {
     
     # Get total number of target cells in radius around reference cell type
-    n_target_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_proportions_df[[target_cell_type]])
+    n_target_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_df[[target_cell_type]])
     
     # Get proportion of target cells in radius around reference cell type
     target_cell_type_proportion_in_reference_cell_type_radius <- n_target_cells_in_reference_cell_type_radius / n_cells_in_reference_cell_type_radius
@@ -1393,19 +1402,11 @@ calculate_entropy3D <- function(spatial_df,
   
   if (is.null(cells_in_neighbourhood_proportion_df)) return(NULL)
   
-  ## Get entropy for each row
-  cells_in_neighbourhood_proportion_df$entropy <- apply(
-    cells_in_neighbourhood_proportion_df[, paste(target_cell_types, "_prop", sep = "")],
-    1,
-    function(x) {
-      x <- x[!is.na(x)]  # Remove NA values
-      if (length(x) == 0) return(NA)  # Return NA if all values were NA
-      -1 * sum(x * log(x, base = length(target_cell_types)))
-    }
-  )
-  cells_in_neighbourhood_proportion_df$entropy <- ifelse(cells_in_neighbourhood_proportion_df$total > 0 & is.nan(cells_in_neighbourhood_proportion_df$entropy), 
-                                                         0,
-                                                         cells_in_neighbourhood_proportion_df$entropy)
+  ## Get entropy for target_cell_type
+  cells_in_neighbourhood_proportion_df[ , paste(target_cell_types, "_entropy", sep = "")] <- 
+    -1 * 
+    (cells_in_neighbourhood_proportion_df[ , paste(target_cell_types, "_prop", sep = "")] * log(cells_in_neighbourhood_proportion_df[ , paste(target_cell_types, "_prop", sep = "")], 2) +
+       (1 - cells_in_neighbourhood_proportion_df[ , paste(target_cell_types, "_prop", sep = "")]) * log(1 - (cells_in_neighbourhood_proportion_df[ , paste(target_cell_types, "_prop", sep = "")]), 2))
   
   return(cells_in_neighbourhood_proportion_df)
 }
