@@ -11,6 +11,10 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
   if (class(spe) != "SpatialExperiment") {
     stop("`spe` is not a SpatialExperiment object.")
   }
+  # Check if there are empty strings or string of only spaces in 'cell_types_of_interest'
+  if (length(spe[[feature_colname]][trimws(spe[[feature_colname]]) == ""]) > 0) {
+    stop("spe cannot contain cell types that are an empty string or a string of only spaces.")
+  }
   if (!(is.character(reference_cell_type) && length(reference_cell_type) == 1)) {
     stop("`reference_cell_type` is not a character.")
   }

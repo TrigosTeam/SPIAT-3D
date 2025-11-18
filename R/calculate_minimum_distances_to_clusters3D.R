@@ -9,6 +9,10 @@ calculate_minimum_distances_to_clusters3D <- function(spe,
   if (class(spe) != "SpatialExperiment") {
     stop("`spe` is not a SpatialExperiment object.")
   }
+  # Check if there are empty strings or string of only spaces in 'cell_types_of_interest'
+  if (length(spe[[feature_colname]][trimws(spe[[feature_colname]]) == ""]) > 0) {
+    stop("spe cannot contain cell types that are an empty string or a string of only spaces.")
+  }
   if (!is.character(cell_types_inside_cluster)) {
     stop("`cell_types_inside_cluster` is not a character vector.")
   }

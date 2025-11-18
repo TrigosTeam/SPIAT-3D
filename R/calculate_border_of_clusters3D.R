@@ -8,6 +8,10 @@ calculate_border_of_clusters3D <- function(spe,
   if (class(spe) != "SpatialExperiment") {
     stop("`spe` is not a SpatialExperiment object.")
   }
+  # Check if there are empty strings or string of only spaces in 'cell_types_of_interest'
+  if (length(spe[[feature_colname]][trimws(spe[[feature_colname]]) == ""]) > 0) {
+    stop("spe cannot contain cell types that are an empty string or a string of only spaces.")
+  }
   if (!(is.numeric(radius) && length(radius) == 1 && radius > 0)) {
     stop("`radius` is not a positive numeric.")
   }
