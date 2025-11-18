@@ -192,7 +192,7 @@ calculate_all_gradient_cc_metrics3D <- function(spe,
     methods::show(fig_ACINP)
     
     expected_entropy <- calculate_entropy_background3D(spe, target_cell_types, feature_colname)
-    fig_AE <- plot_entropy_gradient3D(result[["entropy"]], expected_entropy, reference_cell_type, target_cell_types)
+    fig_AE <- plot_entropy_gradient3D(result[["entropy"]], reference_cell_type)
     methods::show(fig_AE)
     
     for (target_cell_type in names(result[["mixing_score"]])) {
@@ -1289,8 +1289,8 @@ calculate_entropy_gradient3D <- function(spe,
     stop("`radii` is not a numeric vector with at least 2 values")
   }
   
-  result <- data.frame(matrix(nrow = length(radii), ncol = 1))
-  colnames(result) <- "entropy"
+  result <- data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types)))
+  colnames(result) <- target_cell_types
   
   for (i in seq(length(radii))) {
     entropy_df <- calculate_entropy3D(spe,
@@ -1301,7 +1301,7 @@ calculate_entropy_gradient3D <- function(spe,
     
     if (is.null(entropy_df)) return(NULL)
     
-    result[i, "entropy"] <- mean(entropy_df$entropy, na.rm = T)
+    result[i, ] <- apply(entropy_df[ , paste(target_cell_types, "_entropy", sep = "")], 2, mean, na.rm = T)
   }
   
   # Add a radius column to the result
@@ -1309,7 +1309,7 @@ calculate_entropy_gradient3D <- function(spe,
   
   if (plot_image) {
     expected_entropy <- calculate_entropy_background3D(spe, target_cell_types, feature_colname)
-    fig <- plot_entropy_gradient3D(result, expected_entropy, reference_cell_type, target_cell_types)
+    fig <- plot_entropy_gradient3D(result, reference_cell_type)
     methods::show(fig)
   }
   
@@ -3097,36 +3097,26 @@ plot_distances_between_cell_types_violin3D <- function(distances_df,
   
   return(fig)
 }
+
 plot_entropy_gradient3D <- function(entropy_gradient_df, 
-                                    expected_entropy = NULL, 
-                                    reference_cell_type = NULL, 
-                                    target_cell_types = NULL) {
+                                    reference_cell_type = NULL) {
   
-  plot_result <- entropy_gradient_df
-  
-  if (!is.null(expected_entropy)) {
-    if (!is.numeric(expected_entropy) || length(expected_entropy) != 1) stop("Please enter a single number for expected_entropy")
-    plot_result$expected_entropy <- expected_entropy
-    plot_result <- reshape2::melt(plot_result, "radius", c("entropy", "expected_entropy"))
-    labels <- c("Observed entropy", "Expected CSR entropy")
-  }
-  else {
-    plot_result <- reshape2::melt(plot_result, "radius", c("entropy"))
-    labels <- c("Observed entropy")
-  }
-  
-  fig <- ggplot(plot_result, aes(x = radius, y = value, color = variable)) +
+  plot_result <- reshape2::melt(entropy_gradient_df, id.vars = c("radius"))
+  fig <- ggplot(plot_result, aes(radius, value, color = variable)) +
+    geom_point() +
     geom_line() +
-    labs(title = "Average entropy gradient", x = "Radius", y = "Entropy") +
-    scale_colour_discrete(name = "", labels = labels) +
-    theme_bw()
+    labs(title = "Entropy gradient", x = "Radius", y = "Entropy", color = "Cell type") +
+    theme_bw() +
+    ylim(0, 1)
   
-  if (!is.null(reference_cell_type) && !is.null(target_cell_types)) {
-    fig <- fig + labs(subtitle = paste("Reference: ", reference_cell_type, ", Target: ", target_cell_types, sep = ""))
+  if (!is.null(reference_cell_type)) {
+    fig <- fig + labs(subtitle = paste("Reference: ", reference_cell_type, ", Target: ", paste(colnames(entropy_gradient_df)[seq(ncol(entropy_gradient_df) - 1)], collapse = ", "), sep = ""))
   }
   
   return(fig)
 }
+
+
 plot_grid_based_clusters3D <- function(spe_with_grid, 
                                        plot_cell_types = NULL,
                                        plot_colours = NULL,

@@ -99,7 +99,7 @@ calculate_all_gradient_cc_metrics3D <- function(spe,
     methods::show(fig_ACINP)
     
     expected_entropy <- calculate_entropy_background3D(spe, target_cell_types, feature_colname)
-    fig_AE <- plot_entropy_gradient3D(result[["entropy"]], expected_entropy, reference_cell_type, target_cell_types)
+    fig_AE <- plot_entropy_gradient3D(result[["entropy"]], reference_cell_type)
     methods::show(fig_AE)
     
     for (target_cell_type in names(result[["mixing_score"]])) {
