@@ -407,7 +407,7 @@ calculate_cell_proportions2D <- function(spatial_df,
   if (length(spatial_df[[feature_colname]][trimws(spatial_df[[feature_colname]]) == ""]) > 0) {
     stop("spatial_df cannot contain cell types that are an empty string or a string of only spaces.")
   }
-  if (ncol(spatial_df) == 0) {
+  if (nrow(spatial_df) == 0) {
     stop("No cells found for calculating cell proportions.")
   }
   if (!(is.null(cell_types_of_interest) || is.character(cell_types_of_interest))) {
@@ -626,7 +626,7 @@ calculate_neighbourhood_counts2D <- function(spatial_df,
   
   if (is.null(spatial_df[["Cell.ID"]])) {
     warning("Temporarily adding Cell.ID column to your spatial_df")
-    spatial_df$Cell.ID <- paste("Cell", seq(ncol(spatial_df)), sep = "_")
+    spatial_df$Cell.ID <- paste("Cell", seq(nrow(spatial_df)), sep = "_")
   }  
   
   # Get spatial_df coords
@@ -886,7 +886,7 @@ calculate_cross_K2D <- function(spatial_df,
   
   if (is.null(spatial_df[["Cell.ID"]])) {
     warning("Temporarily adding Cell.ID column to your spatial_df")
-    spatial_df$Cell.ID <- paste("Cell", seq(ncol(spatial_df)), sep = "_")
+    spatial_df$Cell.ID <- paste("Cell", seq(nrow(spatial_df)), sep = "_")
   }  
   
   
@@ -1167,7 +1167,7 @@ calculate_minimum_distances_between_cell_types2D <- function(spatial_df,
   if (length(spatial_df[[feature_colname]][trimws(spatial_df[[feature_colname]]) == ""]) > 0) {
     stop("spatial_df cannot contain cell types that are an empty string or a string of only spaces.")
   }
-  if (ncol(spatial_df) < 2) {
+  if (nrow(spatial_df) < 2) {
     stop("There must be at least two cells in spatial_df.")
   }
   if (!(is.null(cell_types_of_interest) || is.character(cell_types_of_interest))) {
@@ -1188,7 +1188,7 @@ calculate_minimum_distances_between_cell_types2D <- function(spatial_df,
   
   if (is.null(spatial_df[["Cell.ID"]])) {
     warning("Temporarily adding Cell.ID column to your spatial_df")
-    spatial_df$Cell.ID <- paste("Cell", seq(ncol(spatial_df)), sep = "_")
+    spatial_df$Cell.ID <- paste("Cell", seq(nrow(spatial_df)), sep = "_")
   }  
   
   # De-factor feature column in spatial_df object
@@ -1456,7 +1456,7 @@ calculate_pairwise_distances_between_cell_types2D <- function(spatial_df,
   if (length(spatial_df[[feature_colname]][trimws(spatial_df[[feature_colname]]) == ""]) > 0) {
     stop("spatial_df cannot contain cell types that are an empty string or a string of only spaces.")
   }
-  if (ncol(spatial_df) < 2) {
+  if (nrow(spatial_df) < 2) {
     stop("There must be at least two cells in spatial_df.")
   }
   if (!(is.null(cell_types_of_interest) || is.character(cell_types_of_interest))) {
@@ -1477,7 +1477,7 @@ calculate_pairwise_distances_between_cell_types2D <- function(spatial_df,
   
   if (is.null(spatial_df[["Cell.ID"]])) {
     warning("Temporarily adding Cell.ID column to your spatial_df")
-    spatial_df$Cell.ID <- paste("Cell", seq(ncol(spatial_df)), sep = "_")
+    spatial_df$Cell.ID <- paste("Cell", seq(nrow(spatial_df)), sep = "_")
   }
   
   # De-factor feature column in spatial_df object
