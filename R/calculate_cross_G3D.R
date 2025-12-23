@@ -6,15 +6,15 @@ calculate_cross_G3D <- function(spe,
   
   ### Calculate the observed cross_G
   # Get the number of target cells in the radius around each reference cell
-  cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood3D(spe,
-                                                                  reference_cell_type,
-                                                                  target_cell_type,
-                                                                  radius,
-                                                                  feature_colname,
-                                                                  show_summary = FALSE,
-                                                                  plot_image = FALSE)
+  neighbourhood_counts_df <- calculate_neighbourhood_counts3D(spe,
+                                                              reference_cell_type,
+                                                              target_cell_type,
+                                                              radius,
+                                                              feature_colname,
+                                                              show_summary = FALSE,
+                                                              plot_image = FALSE)
   
-  reference_target_interactions <- cells_in_neighbourhood_df[[target_cell_type]]
+  reference_target_interactions <- neighbourhood_counts_df[[target_cell_type]]
   
   # cross_G: essentially the proportion of reference cells with at least 1 target cell within the chosen radius.
   observed_cross_G <- sum(reference_target_interactions != 0) / length(reference_target_interactions)

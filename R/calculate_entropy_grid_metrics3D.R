@@ -59,7 +59,7 @@ calculate_entropy_grid_metrics3D <- function(spe,
   
   ## Use proportion data frame to get entropy
   calculate_entropy <- function(x) {
-    entropy <- -1 * sum(x * ifelse(is.infinite(log(x, length(x))), 0, log(x, length(x))))
+    entropy <- -1 * sum(x * ifelse(is.infinite(log(x, 2)), 0, log(x, 2))) / log(length(x), 2)
     return(entropy)
   }
   result$entropy <- apply(df_props, 1, calculate_entropy)

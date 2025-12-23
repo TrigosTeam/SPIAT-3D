@@ -39,17 +39,17 @@ calculate_cross_K3D <- function(spe,
   # Define result data frame
   result <- data.frame(reference = reference_cell_type, expected = expected_cross_K)
   
-  cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood3D(spe,
-                                                                  reference_cell_type,
-                                                                  target_cell_types,
-                                                                  radius,
-                                                                  feature_colname,
-                                                                  show_summary = FALSE,
-                                                                  plot_image = FALSE)
+  neighbourhood_counts_df <- calculate_neighbourhood_counts3D(spe,
+                                                              reference_cell_type,
+                                                              target_cell_types,
+                                                              radius,
+                                                              feature_colname,
+                                                              show_summary = FALSE,
+                                                              plot_image = FALSE)
   
   for (target_cell_type in target_cell_types) {
     
-    n_ref_tar_interactions <- sum(cells_in_neighbourhood_df[[target_cell_type]])
+    n_ref_tar_interactions <- sum(neighbourhood_counts_df[[target_cell_type]])
     
     n_tar_cells <- sum(spe[[feature_colname]] == target_cell_type)
     

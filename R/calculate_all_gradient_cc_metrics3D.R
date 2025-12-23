@@ -24,16 +24,16 @@ calculate_all_gradient_cc_metrics3D <- function(spe,
   
   ## Define result
   result <- list("mixing_score" = list(),
+                 "neighbourhood_counts" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
                  "cells_in_neighbourhood" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
-                 "cells_in_neighbourhood_proportion" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
-                 "entropy" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
+                 "neighbourhood_entropy" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
                  "cross_K" = data.frame(matrix(nrow = length(radii), ncol = length(cross_K_df_colnames))),
                  "cross_L" = data.frame(matrix(nrow = length(radii), ncol = length(cross_K_df_colnames))),
                  "cross_G" = list(),
                  "co_occurrence" = data.frame(matrix(nrow = length(radii), ncol = length(co_occurrence_df_colnames))))
+  colnames(result[["neighbourhood_counts"]]) <- target_cell_types
   colnames(result[["cells_in_neighbourhood"]]) <- target_cell_types
-  colnames(result[["cells_in_neighbourhood_proportion"]]) <- target_cell_types
-  colnames(result[["entropy"]]) <- target_cell_types
+  colnames(result[["neighbourhood_entropy"]]) <- target_cell_types
   colnames(result[["cross_K"]]) <- cross_K_df_colnames
   colnames(result[["cross_L"]]) <- cross_K_df_colnames
   colnames(result[["co_occurrence"]]) <- co_occurrence_df_colnames
@@ -58,11 +58,11 @@ calculate_all_gradient_cc_metrics3D <- function(spe,
     
     if (is.null(df)) return(NULL)
     
-    df[["cells_in_neighbourhood"]]$ref_cell_id <- NULL
+    df[["neighbourhood_counts"]]$ref_cell_id <- NULL
     
-    result[["cells_in_neighbourhood"]][i, ] <- apply(df[["cells_in_neighbourhood"]], 2, mean)
-    result[["cells_in_neighbourhood_proportion"]][i, ] <- apply(df[["cells_in_neighbourhood_proportion"]][ , paste(target_cell_types, "_prop", sep = "")], 2, mean, na.rm = T)
-    result[["entropy"]][i, ] <- apply(df[["entropy"]][ , paste(target_cell_types, "_entropy", sep = "")], 2, mean, na.rm = T)
+    result[["neighbourhood_counts"]][i, ] <- apply(df[["neighbourhood_counts"]], 2, mean)
+    result[["cells_in_neighbourhood"]][i, ] <- apply(df[["cells_in_neighbourhood"]][ , paste(target_cell_types, "_prop", sep = "")], 2, mean, na.rm = T)
+    result[["neighbourhood_entropy"]][i, ] <- apply(df[["neighbourhood_entropy"]][ , paste(target_cell_types, "_entropy", sep = "")], 2, mean, na.rm = T)
     result[["cross_K"]][i, ] <- df[["cross_K"]]
     result[["cross_L"]][i, ] <- df[["cross_L"]]
     result[["co_occurrence"]][i, ] <- df[["co_occurrence"]]
@@ -76,9 +76,9 @@ calculate_all_gradient_cc_metrics3D <- function(spe,
   }
   
   # Add radius column to each data frame
+  result[["neighbourhood_counts"]]$radius <- radii
   result[["cells_in_neighbourhood"]]$radius <- radii
-  result[["cells_in_neighbourhood_proportion"]]$radius <- radii
-  result[["entropy"]]$radius <- radii
+  result[["neighbourhood_entropy"]]$radius <- radii
   result[["cross_K"]]$radius <- radii
   result[["cross_L"]]$radius <- radii
   result[["co_occurrence"]]$radius <- radii
@@ -92,14 +92,14 @@ calculate_all_gradient_cc_metrics3D <- function(spe,
   
   ## Plot
   if (plot_image) {
-    fig_ACIN <- plot_cells_in_neighbourhood_gradient3D(result[["cells_in_neighbourhood"]], reference_cell_type)
+    fig_ACIN <- plot_neighbourhood_counts_gradient3D(result[["neighbourhood_counts"]], reference_cell_type)
     methods::show(fig_ACIN)
     
-    fig_ACINP <- plot_cells_in_neighbourhood_proportions_gradient3D(result[["cells_in_neighbourhood_proportion"]], reference_cell_type)
+    fig_ACINP <- plot_cells_in_neighbourhood_gradient3D(result[["cells_in_neighbourhood"]], reference_cell_type)
     methods::show(fig_ACINP)
     
     expected_entropy <- calculate_entropy_background3D(spe, target_cell_types, feature_colname)
-    fig_AE <- plot_entropy_gradient3D(result[["entropy"]], reference_cell_type)
+    fig_AE <- plot_neighbourhood_entropy_gradient3D(result[["neighbourhood_entropy"]], reference_cell_type)
     methods::show(fig_AE)
     
     for (target_cell_type in names(result[["mixing_score"]])) {

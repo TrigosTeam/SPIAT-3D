@@ -2,102 +2,26 @@ calculate_cells_in_neighbourhood3D <- function(spe,
                                                reference_cell_type, 
                                                target_cell_types, 
                                                radius, 
-                                               feature_colname = "Cell.Type",
-                                               show_summary = TRUE,
-                                               plot_image = TRUE) {
+                                               feature_colname = "Cell.Type") {
   
+  ## Get cells in neighbourhood df
+  neighbourhood_counts_df <- calculate_neighbourhood_counts3D(spe,
+                                                              reference_cell_type,
+                                                              c(reference_cell_type, target_cell_types),
+                                                              radius,
+                                                              feature_colname,
+                                                              FALSE,
+                                                              FALSE)
   
-  # Check input parameters
-  if (class(spe) != "SpatialExperiment") {
-    stop("`spe` is not a SpatialExperiment object.")
-  }
-  # Check if there are empty strings or string of only spaces in 'cell_types_of_interest'
-  if (length(spe[[feature_colname]][trimws(spe[[feature_colname]]) == ""]) > 0) {
-    stop("spe cannot contain cell types that are an empty string or a string of only spaces.")
-  }
-  if (!(is.character(reference_cell_type) && length(reference_cell_type) == 1)) {
-    stop("`reference_cell_type` is not a character.")
-  }
-  if (!is.character(target_cell_types)) {
-    stop("`target_cell_types` is not a character vector.")
-  }
-  if (!(is.numeric(radius) && length(radius) == 1 && radius > 0)) {
-    stop("`radius` is not a positive numeric.")
-  }
-  if (!is.character(feature_colname)) {
-    stop("`feature_colname` is not a character.")
-  }
-  if (is.null(spe[[feature_colname]])) {
-    stop(paste("No column called", feature_colname, "found in spe object."))
-  }
-  if (!is.logical(show_summary)) {
-    stop("`show_summary` is not a logical (TRUE or FALSE).")
-  }
-  if (!is.logical(plot_image)) {
-    stop("`plot_image` is not a logical (TRUE or FALSE).")
+  if (is.null(neighbourhood_counts_df)) return(NULL)
+  
+  neighbourhood_counts_df[ , paste(target_cell_types, "_prop", sep = "")] <- 
+    neighbourhood_counts_df[ , target_cell_types] / (neighbourhood_counts_df[ , target_cell_types] + neighbourhood_counts_df[ , reference_cell_type])
+  
+  # If reference cell type is in target cell types, proportion should be 1
+  if (reference_cell_type %in% target_cell_types) {
+    neighbourhood_counts_df[neighbourhood_counts_df[[reference_cell_type]] != 0, paste(reference_cell_type, "_prop", sep = "")] <- 1
   }
   
-  ## For reference_cell_type, check it is found in the spe object
-  if (!(reference_cell_type %in% spe[[feature_colname]])) {
-    warning(paste("The reference_cell_type", reference_cell_type,"is not found in the spe object"))
-    return(NULL)
-  }
-  ## For target_cell_types, check they are found in the spe object
-  unknown_cell_types <- setdiff(target_cell_types, spe[[feature_colname]])
-  if (length(unknown_cell_types) != 0) {
-    warning(paste("The following cell types in target_cell_types are not found in the spe object:\n   ",
-                  paste(unknown_cell_types, collapse = ", ")))
-  }
-  
-  if (is.null(spe[["Cell.ID"]])) {
-    warning("Temporarily adding Cell.ID column to your spe")
-    spe$Cell.ID <- paste("Cell", seq(ncol(spe)), sep = "_")
-  }  
-  
-  # Get spe coords
-  spe_coords <- data.frame(spatialCoords(spe))
-  
-  # Get reference_cell_type coords
-  reference_cell_type_coords <- spe_coords[spe[[feature_colname]] == reference_cell_type, ]
-  
-  result <- data.frame(ref_cell_id = spe$Cell.ID[spe[[feature_colname]] == reference_cell_type])
-  
-  for (target_cell_type in target_cell_types) {
-    
-    if (sum(spe[[feature_colname]] == target_cell_type) == 0) {
-      result[[target_cell_type]] <- NA
-      next
-    }
-    
-    ## Get target_cell_type coords
-    target_cell_type_coords <- spe_coords[spe[[feature_colname]] == target_cell_type, ]
-    
-    ## Determine number of target cells specified distance for each reference cell
-    ref_tar_result <- dbscan::frNN(target_cell_type_coords, 
-                                   eps = radius,
-                                   query = reference_cell_type_coords, 
-                                   sort = FALSE)
-    
-    n_targets <- rapply(ref_tar_result$id, length)
-    
-    
-    # Don't want to include the reference cell as one of the target cells
-    if (reference_cell_type == target_cell_type) n_targets <- n_targets - 1
-    
-    ## Add to data frame
-    result[[target_cell_type]] <- n_targets
-  }
-  
-  ## Print summary
-  if (show_summary) {
-    print(summarise_cells_in_neighbourhood3D(result))    
-  }
-  
-  ## Plot
-  if (plot_image) {
-    fig <- plot_cells_in_neighbourhood_violin3D(result, reference_cell_type)
-    methods::show(fig)
-  }
-  
-  return(result)
+  return(neighbourhood_counts_df)
 }

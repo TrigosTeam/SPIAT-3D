@@ -13,21 +13,22 @@ calculate_cells_in_neighbourhood_gradient3D <- function(spe,
   colnames(result) <- target_cell_types
   
   for (i in seq(length(radii))) {
-    cell_proportions_neighbourhood_proportions_df <- calculate_cells_in_neighbourhood3D(spe,
-                                                                                        reference_cell_type,
-                                                                                        target_cell_types,
-                                                                                        radii[i],
-                                                                                        feature_colname)
+    cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood3D(spe,
+                                                                    reference_cell_type,
+                                                                    target_cell_types,
+                                                                    radii[i],
+                                                                    feature_colname,
+                                                                    FALSE,
+                                                                    FALSE)
     
-    if (is.null(cell_proportions_neighbourhood_proportions_df)) return(NULL)
+    if (is.null(cells_in_neighbourhood_df)) return(NULL)
     
-    result[i, ] <- apply(cell_proportions_neighbourhood_proportions_df[ , paste(target_cell_types, "_prop", sep = "")], 2, mean, na.rm = T)
+    cells_in_neighbourhood_df$ref_cell_id <- NULL
+    result[i, ] <- apply(cells_in_neighbourhood_df, 2, mean)
   }
-  
   # Add a radius column to the result
   result$radius <- radii
   
-  # Plot
   if (plot_image) {
     fig <- plot_cells_in_neighbourhood_gradient3D(result, reference_cell_type)
     methods::show(fig)

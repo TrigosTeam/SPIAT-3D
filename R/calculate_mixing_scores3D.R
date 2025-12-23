@@ -36,20 +36,20 @@ calculate_mixing_scores3D <- function(spe,
       
       
       ## Get cells in neighbourhood df
-      cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood3D(spe,
-                                                                      reference_cell_type,
-                                                                      c(reference_cell_type, target_cell_type),
-                                                                      radius,
-                                                                      feature_colname,
-                                                                      FALSE,
-                                                                      FALSE)
+      neighbourhood_counts_df <- calculate_neighbourhood_counts3D(spe,
+                                                                  reference_cell_type,
+                                                                  c(reference_cell_type, target_cell_type),
+                                                                  radius,
+                                                                  feature_colname,
+                                                                  FALSE,
+                                                                  FALSE)
       
       # Get number of ref-ref interactions
       # Halve it to avoid counting each ref-ref interaction twice
-      n_ref_ref_interactions <- 0.5 * sum(cells_in_neighbourhood_df[[reference_cell_type]]) 
+      n_ref_ref_interactions <- 0.5 * sum(neighbourhood_counts_df[[reference_cell_type]]) 
       
       # Get number of ref-tar interactions
-      n_ref_tar_interactions <- sum(cells_in_neighbourhood_df[[target_cell_type]]) 
+      n_ref_tar_interactions <- sum(neighbourhood_counts_df[[target_cell_type]]) 
       
       
       # Can't get mixing scores if there are no target cells

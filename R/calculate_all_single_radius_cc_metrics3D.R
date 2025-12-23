@@ -44,9 +44,9 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
   }
   
   # Define result
-  result <- list("cells_in_neighbourhood" = list(),
-                 "cells_in_neighbourhood_proportion" = list(),
-                 "entropy" = list(),
+  result <- list("neighbourhood_counts" = list(),
+                 "cells_in_neighbourhood" = list(),
+                 "neighbourhood_entropy" = list(),
                  "mixing_score" = list(),
                  "cross_K" = list(),
                  "cross_L" = list(),
@@ -81,21 +81,21 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
   
   
   
-  # All single radius cc metrics stem from calculate_entropy3D function
-  entropy_df <- calculate_entropy3D(spe, 
-                                    reference_cell_type, 
-                                    target_cell_types, 
-                                    radius, 
-                                    feature_colname)  
+  # All single radius cc metrics stem from calculate_neighbourhood_entropy3D function
+  neighbourhood_entropy_df <- calculate_neighbourhood_entropy3D(spe, 
+                                                                reference_cell_type, 
+                                                                target_cell_types, 
+                                                                radius, 
+                                                                feature_colname)  
   
   ## Cells in neighbourhood ----------
-  result[["cells_in_neighbourhood"]] <- entropy_df[ , c("ref_cell_id", target_cell_types)]
+  result[["neighbourhood_counts"]] <- neighbourhood_entropy_df[ , c("ref_cell_id", target_cell_types)]
   
   ## Cells in neighbourhood proportion ----------
-  result[["cells_in_neighbourhood_proportion"]] <- entropy_df[ , c("ref_cell_id", paste(target_cell_types, "_prop", sep = ""))]
+  result[["cells_in_neighbourhood"]] <- neighbourhood_entropy_df[ , c("ref_cell_id", paste(target_cell_types, "_prop", sep = ""))]
   
-  ## Entropy --------------
-  result[["entropy"]] <- entropy_df[ , c("ref_cell_id", paste(target_cell_types, "_entropy", sep = ""))]
+  ## neighbourhood_entropy --------------
+  result[["neighbourhood_entropy"]] <- neighbourhood_entropy_df[ , c("ref_cell_id", paste(target_cell_types, "_entropy", sep = ""))]
   
   ## Mixing score -----------------
   for (target_cell_type in target_cell_types) {
@@ -108,8 +108,8 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
       mixing_score_df$tar_cell_type <- target_cell_type
       mixing_score_df$n_ref_cells <- sum(spe[[feature_colname]] == reference_cell_type)
       mixing_score_df$n_tar_cells <- sum(spe[[feature_colname]] == target_cell_type)
-      mixing_score_df$n_ref_tar_interactions <- sum(entropy_df[[target_cell_type]])
-      mixing_score_df$n_ref_ref_interactions <- sum(entropy_df[[reference_cell_type]])
+      mixing_score_df$n_ref_tar_interactions <- sum(neighbourhood_entropy_df[[target_cell_type]])
+      mixing_score_df$n_ref_ref_interactions <- sum(neighbourhood_entropy_df[[reference_cell_type]])
       mixing_score_df$mixing_score <- mixing_score_df$n_ref_tar_interactions / (0.5 * mixing_score_df$n_ref_ref_interactions)
       mixing_score_df$normalised_mixing_score <- 0.5 * mixing_score_df$mixing_score * mixing_score_df$n_ref_cells / mixing_score_df$n_tar_cell
       if (is.infinite(mixing_score_df$mixing_score)) mixing_score_df$mixing_score <- NA
@@ -125,7 +125,7 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
   cross_K_df$expected <- (4/3) * pi * radius^3
   
   for (target_cell_type in target_cell_types) {
-    cross_K_df[[target_cell_type]] <- (((volume * sum(entropy_df[[target_cell_type]])) / sum(spe[[feature_colname]] == reference_cell_type)) / sum(spe[[feature_colname]] == target_cell_type)) 
+    cross_K_df[[target_cell_type]] <- (((volume * sum(neighbourhood_entropy_df[[target_cell_type]])) / sum(spe[[feature_colname]] == reference_cell_type)) / sum(spe[[feature_colname]] == target_cell_type)) 
   }
   result[["cross_K"]] <- cross_K_df
   
@@ -139,7 +139,7 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
     cross_G_df <- data.frame(matrix(nrow = 1, ncol = length(cross_G_df_colnames)))
     colnames(cross_G_df) <- cross_G_df_colnames
     
-    reference_target_interactions <- entropy_df[[target_cell_type]]
+    reference_target_interactions <- neighbourhood_entropy_df[[target_cell_type]]
     n_target_cells <- sum(spe[[feature_colname]] == target_cell_type)
     target_cell_type_intensity <- n_target_cells / volume
     observed_cross_G <- sum(reference_target_interactions != 0) / length(reference_target_interactions)
@@ -153,25 +153,25 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
   
   ## Co_occurrence ---------------
   all_cell_types <- unique(spe[[feature_colname]])
-  cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood3D(spe,
-                                                                  reference_cell_type,
-                                                                  all_cell_types,
-                                                                  radius,
-                                                                  feature_colname,
-                                                                  F,
-                                                                  F)
+  neighbourhood_counts_df <- calculate_neighbourhood_counts3D(spe,
+                                                              reference_cell_type,
+                                                              all_cell_types,
+                                                              radius,
+                                                              feature_colname,
+                                                              F,
+                                                              F)
   
-  cells_in_neighbourhood_df$total <- rowSums(cells_in_neighbourhood_df[, -1], na.rm = TRUE)
+  neighbourhood_counts_df$total <- rowSums(neighbourhood_counts_df[, -1], na.rm = TRUE)
   
   co_occurrence_df <- data.frame(matrix(nrow = 1, ncol = length(co_occurrence_df_colnames)))
   colnames(co_occurrence_df) <- co_occurrence_df_colnames
   co_occurrence_df$reference <- reference_cell_type
   
   n_cells_in_spe <- length(spe[[feature_colname]])
-  n_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_df$total)
+  n_cells_in_reference_cell_type_radius <- sum(neighbourhood_counts_df$total)
   
   for (target_cell_type in target_cell_types) {
-    n_target_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_df[[target_cell_type]])
+    n_target_cells_in_reference_cell_type_radius <- sum(neighbourhood_counts_df[[target_cell_type]])
     target_cell_type_proportion_in_reference_cell_type_radius <- n_target_cells_in_reference_cell_type_radius / n_cells_in_reference_cell_type_radius
     n_target_cells_in_spe <- sum(spe[[feature_colname]] == target_cell_type)
     target_cell_type_proportion_in_spe <- n_target_cells_in_spe / n_cells_in_spe
