@@ -121,10 +121,10 @@ entropy_result <- calculate_neighbourhood_entropy3D(spe1,
 
 
 entropy_gradient <- calculate_neighbourhood_entropy_gradient3D(spe1,
-                                                 reference_cell_type = "Tumour",
-                                                 target_cell_types = c("Tumour", "Immune"),
-                                                 radii = seq(1, 50, 2),
-                                                 plot_image = TRUE)
+                                                               reference_cell_type = "Tumour",
+                                                               target_cell_types = c("Tumour", "Immune"),
+                                                               radii = seq(1, 50, 2),
+                                                               plot_image = TRUE)
 
 
 ### Using all_single_radius and all_gradient functions
