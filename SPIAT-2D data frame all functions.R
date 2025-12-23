@@ -1,14 +1,3 @@
-library(SpatialExperiment)
-library(dbscan)
-
-library(apcluster)
-library(plotly)
-library(dplyr)
-library(reshape2)
-library(gtools)
-library(cowplot)
-library(Hmisc)
-
 
 calculate_all_gradient_cc_metrics2D <- function(spatial_df, 
                                                 reference_cell_type, 
@@ -36,21 +25,21 @@ calculate_all_gradient_cc_metrics2D <- function(spatial_df,
   
   ## Define result
   result <- list("mixing_score" = list(),
+                 "neighbourhood_counts" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
                  "cells_in_neighbourhood" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
-                 "cells_in_neighbourhood_proportion" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
-                 "entropy" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
+                 "neighbourhood_entropy" = data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types))),
                  "cross_K" = data.frame(matrix(nrow = length(radii), ncol = length(cross_K_df_colnames))),
                  "cross_L" = data.frame(matrix(nrow = length(radii), ncol = length(cross_K_df_colnames))),
                  "cross_G" = list(),
                  "co_occurrence" = data.frame(matrix(nrow = length(radii), ncol = length(co_occurrence_df_colnames))))
+  colnames(result[["neighbourhood_counts"]]) <- target_cell_types
   colnames(result[["cells_in_neighbourhood"]]) <- target_cell_types
-  colnames(result[["cells_in_neighbourhood_proportion"]]) <- target_cell_types
-  colnames(result[["entropy"]]) <- target_cell_types
+  colnames(result[["neighbourhood_entropy"]]) <- target_cell_types
   colnames(result[["cross_K"]]) <- cross_K_df_colnames
   colnames(result[["cross_L"]]) <- cross_K_df_colnames
   colnames(result[["co_occurrence"]]) <- co_occurrence_df_colnames
   
-  # Define indiviudal data frames for mixing_score and cross_G
+  # Define individual data frames for mixing_score and cross_G
   for (target_cell_type in target_cell_types) {
     if (reference_cell_type != target_cell_type) {
       result[["mixing_score"]][[target_cell_type]] <- data.frame(matrix(nrow = length(radii), ncol = length(mixing_score_df_colnames)))
@@ -70,11 +59,11 @@ calculate_all_gradient_cc_metrics2D <- function(spatial_df,
     
     if (is.null(df)) return(NULL)
     
-    df[["cells_in_neighbourhood"]]$ref_cell_id <- NULL
+    df[["neighbourhood_counts"]]$ref_cell_id <- NULL
     
-    result[["cells_in_neighbourhood"]][i, ] <- apply(df[["cells_in_neighbourhood"]], 2, mean)
-    result[["cells_in_neighbourhood_proportion"]][i, ] <- apply(df[["cells_in_neighbourhood_proportion"]][ , paste(target_cell_types, "_prop", sep = "")], 2, mean, na.rm = T)
-    result[["entropy"]][i, ] <- apply(df[["entropy"]][ , paste(target_cell_types, "_entropy", sep = "")], 2, mean, na.rm = T)
+    result[["neighbourhood_counts"]][i, ] <- apply(df[["neighbourhood_counts"]], 2, mean)
+    result[["cells_in_neighbourhood"]][i, ] <- apply(df[["cells_in_neighbourhood"]][ , paste(target_cell_types, "_prop", sep = "")], 2, mean, na.rm = T)
+    result[["neighbourhood_entropy"]][i, ] <- apply(df[["neighbourhood_entropy"]][ , paste(target_cell_types, "_entropy", sep = "")], 2, mean, na.rm = T)
     result[["cross_K"]][i, ] <- df[["cross_K"]]
     result[["cross_L"]][i, ] <- df[["cross_L"]]
     result[["co_occurrence"]][i, ] <- df[["co_occurrence"]]
@@ -88,9 +77,9 @@ calculate_all_gradient_cc_metrics2D <- function(spatial_df,
   }
   
   # Add radius column to each data frame
+  result[["neighbourhood_counts"]]$radius <- radii
   result[["cells_in_neighbourhood"]]$radius <- radii
-  result[["cells_in_neighbourhood_proportion"]]$radius <- radii
-  result[["entropy"]]$radius <- radii
+  result[["neighbourhood_entropy"]]$radius <- radii
   result[["cross_K"]]$radius <- radii
   result[["cross_L"]]$radius <- radii
   result[["co_occurrence"]]$radius <- radii
@@ -101,16 +90,17 @@ calculate_all_gradient_cc_metrics2D <- function(spatial_df,
     result[["cross_G"]][[target_cell_type]]$radius <- radii
   }
   
+  
   ## Plot
   if (plot_image) {
-    fig_ACIN <- plot_cells_in_neighbourhood_gradient2D(result[["cells_in_neighbourhood"]], reference_cell_type)
+    fig_ACIN <- plot_neighbourhood_counts_gradient2D(result[["neighbourhood_counts"]], reference_cell_type)
     methods::show(fig_ACIN)
     
-    fig_ACINP <- plot_cells_in_neighbourhood_proportions_gradient2D(result[["cells_in_neighbourhood_proportion"]], reference_cell_type)
+    fig_ACINP <- plot_cells_in_neighbourhood_gradient2D(result[["cells_in_neighbourhood"]], reference_cell_type)
     methods::show(fig_ACINP)
     
     expected_entropy <- calculate_entropy_background2D(spatial_df, target_cell_types, feature_colname)
-    fig_AE <- plot_entropy_gradient2D(result[["entropy"]], expected_entropy, reference_cell_type, target_cell_types)
+    fig_AE <- plot_neighbourhood_entropy_gradient2D(result[["neighbourhood_entropy"]], reference_cell_type)
     methods::show(fig_AE)
     
     for (target_cell_type in names(result[["mixing_score"]])) {
@@ -140,8 +130,8 @@ calculate_all_gradient_cc_metrics2D <- function(spatial_df,
   
   return(result)
 }
-### Calculate all single radius cell-colocalisation metrics
-# If a function only requires one target cell type, iterate through each cell type in target_cell_types, else use all target_cell_types
+
+
 
 calculate_all_single_radius_cc_metrics2D <- function(spatial_df, 
                                                      reference_cell_type, 
@@ -150,8 +140,10 @@ calculate_all_single_radius_cc_metrics2D <- function(spatial_df,
                                                      feature_colname = "Cell.Type") {
   
   # Check input parameters
-  if (class(spatial_df) != "data.frame") {
-    stop("`spatial_df` is not a data.frame object.")
+  
+  # Check if there are empty strings or string of only spaces in 'cell_types_of_interest'
+  if (length(spatial_df[[feature_colname]][trimws(spatial_df[[feature_colname]]) == ""]) > 0) {
+    stop("spatial_df cannot contain cell types that are an empty string or a string of only spaces.")
   }
   if (!(is.character(reference_cell_type) && length(reference_cell_type) == 1)) {
     stop("`reference_cell_type` is not a character.")
@@ -180,10 +172,11 @@ calculate_all_single_radius_cc_metrics2D <- function(spatial_df,
     warning(paste("The following cell types in target_cell_types are not found in the spatial_df object:\n   ",
                   paste(unknown_cell_types, collapse = ", ")))
   }
+  
   # Define result
-  result <- list("cells_in_neighbourhood" = list(),
-                 "cells_in_neighbourhood_proportion" = list(),
-                 "entropy" = list(),
+  result <- list("neighbourhood_counts" = list(),
+                 "cells_in_neighbourhood" = list(),
+                 "neighbourhood_entropy" = list(),
                  "mixing_score" = list(),
                  "cross_K" = list(),
                  "cross_L" = list(),
@@ -199,6 +192,7 @@ calculate_all_single_radius_cc_metrics2D <- function(spatial_df,
                                 "n_ref_ref_interactions", 
                                 "mixing_score", 
                                 "normalised_mixing_score")
+  
   cross_K_df_colnames <- c("reference",
                            "expected",
                            target_cell_types)
@@ -211,25 +205,26 @@ calculate_all_single_radius_cc_metrics2D <- function(spatial_df,
   spatial_df_coords <- spatial_df[ , c("Cell.X.Position", "Cell.Y.Position")]
   length <- round(max(spatial_df_coords$Cell.X.Position) - min(spatial_df_coords$Cell.X.Position))
   width  <- round(max(spatial_df_coords$Cell.Y.Position) - min(spatial_df_coords$Cell.Y.Position))
-
-  ## Get volume of the window the cells are in
-  volume <- length * width
+  ## Get area of the window the cells are in
+  area <- length * width
   
-  # All single radius cc metrics stem from calculate_entropy2D function
-  entropy_df <- calculate_entropy2D(spatial_df, 
-                                    reference_cell_type, 
-                                    target_cell_types, 
-                                    radius, 
-                                    feature_colname)  
-
+  
+  
+  # All single radius cc metrics stem from calculate_neighbourhood_entropy2D function
+  neighbourhood_entropy_df <- calculate_neighbourhood_entropy2D(spatial_df, 
+                                                                reference_cell_type, 
+                                                                target_cell_types, 
+                                                                radius, 
+                                                                feature_colname)  
+  
   ## Cells in neighbourhood ----------
-  result[["cells_in_neighbourhood"]] <- entropy_df[ , c("ref_cell_id", target_cell_types)]
+  result[["neighbourhood_counts"]] <- neighbourhood_entropy_df[ , c("ref_cell_id", target_cell_types)]
   
   ## Cells in neighbourhood proportion ----------
-  result[["cells_in_neighbourhood_proportion"]] <- entropy_df[ , c("ref_cell_id", paste(target_cell_types, "_prop", sep = ""))]
+  result[["cells_in_neighbourhood"]] <- neighbourhood_entropy_df[ , c("ref_cell_id", paste(target_cell_types, "_prop", sep = ""))]
   
-  ## Entropy --------------
-  result[["entropy"]] <- entropy_df[ , c("ref_cell_id", paste(target_cell_types, "_entropy", sep = ""))]
+  ## neighbourhood_entropy --------------
+  result[["neighbourhood_entropy"]] <- neighbourhood_entropy_df[ , c("ref_cell_id", paste(target_cell_types, "_entropy", sep = ""))]
   
   ## Mixing score -----------------
   for (target_cell_type in target_cell_types) {
@@ -242,8 +237,8 @@ calculate_all_single_radius_cc_metrics2D <- function(spatial_df,
       mixing_score_df$tar_cell_type <- target_cell_type
       mixing_score_df$n_ref_cells <- sum(spatial_df[[feature_colname]] == reference_cell_type)
       mixing_score_df$n_tar_cells <- sum(spatial_df[[feature_colname]] == target_cell_type)
-      mixing_score_df$n_ref_tar_interactions <- sum(entropy_df[[target_cell_type]])
-      mixing_score_df$n_ref_ref_interactions <- sum(entropy_df[[reference_cell_type]])
+      mixing_score_df$n_ref_tar_interactions <- sum(neighbourhood_entropy_df[[target_cell_type]])
+      mixing_score_df$n_ref_ref_interactions <- sum(neighbourhood_entropy_df[[reference_cell_type]])
       mixing_score_df$mixing_score <- mixing_score_df$n_ref_tar_interactions / (0.5 * mixing_score_df$n_ref_ref_interactions)
       mixing_score_df$normalised_mixing_score <- 0.5 * mixing_score_df$mixing_score * mixing_score_df$n_ref_cells / mixing_score_df$n_tar_cell
       if (is.infinite(mixing_score_df$mixing_score)) mixing_score_df$mixing_score <- NA
@@ -259,7 +254,7 @@ calculate_all_single_radius_cc_metrics2D <- function(spatial_df,
   cross_K_df$expected <- pi * radius^2
   
   for (target_cell_type in target_cell_types) {
-    cross_K_df[[target_cell_type]] <- (((volume * sum(entropy_df[[target_cell_type]])) / sum(spatial_df[[feature_colname]] == reference_cell_type)) / sum(spatial_df[[feature_colname]] == target_cell_type)) 
+    cross_K_df[[target_cell_type]] <- (((area * sum(neighbourhood_entropy_df[[target_cell_type]])) / sum(spatial_df[[feature_colname]] == reference_cell_type)) / sum(spatial_df[[feature_colname]] == target_cell_type)) 
   }
   result[["cross_K"]] <- cross_K_df
   
@@ -273,43 +268,43 @@ calculate_all_single_radius_cc_metrics2D <- function(spatial_df,
     cross_G_df <- data.frame(matrix(nrow = 1, ncol = length(cross_G_df_colnames)))
     colnames(cross_G_df) <- cross_G_df_colnames
     
-    reference_target_interactions <- entropy_df[[target_cell_type]]
+    reference_target_interactions <- neighbourhood_entropy_df[[target_cell_type]]
     n_target_cells <- sum(spatial_df[[feature_colname]] == target_cell_type)
-    target_cell_type_intensity <- n_target_cells / volume
+    target_cell_type_intensity <- n_target_cells / area
     observed_cross_G <- sum(reference_target_interactions != 0) / length(reference_target_interactions)
     expected_cross_G <- 1 - exp(-1 * target_cell_type_intensity * pi * radius^2)
     
     cross_G_df$observed_cross_G <- observed_cross_G
     cross_G_df$expected_cross_G <- expected_cross_G
     result[["cross_G"]][[target_cell_type]] <- cross_G_df
-  } 
+  }
+  
   
   ## Co_occurrence ---------------
   all_cell_types <- unique(spatial_df[[feature_colname]])
-  cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood2D(spatial_df,
-                                                                  reference_cell_type,
-                                                                  all_cell_types,
-                                                                  radius,
-                                                                  feature_colname,
-                                                                  F,
-                                                                  F)
+  neighbourhood_counts_df <- calculate_neighbourhood_counts2D(spatial_df,
+                                                              reference_cell_type,
+                                                              all_cell_types,
+                                                              radius,
+                                                              feature_colname,
+                                                              F,
+                                                              F)
   
-  cells_in_neighbourhood_df$total <- rowSums(cells_in_neighbourhood_df[, -1], na.rm = TRUE)
-  
+  neighbourhood_counts_df$total <- rowSums(neighbourhood_counts_df[, -1], na.rm = TRUE)
   
   co_occurrence_df <- data.frame(matrix(nrow = 1, ncol = length(co_occurrence_df_colnames)))
   colnames(co_occurrence_df) <- co_occurrence_df_colnames
   co_occurrence_df$reference <- reference_cell_type
   
-  n_cells_in_spe <- length(spatial_df[[feature_colname]])
-  n_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_df$total)
+  n_cells_in_spatial_df <- length(spatial_df[[feature_colname]])
+  n_cells_in_reference_cell_type_radius <- sum(neighbourhood_counts_df$total)
   
   for (target_cell_type in target_cell_types) {
-    n_target_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_df[[target_cell_type]])
+    n_target_cells_in_reference_cell_type_radius <- sum(neighbourhood_counts_df[[target_cell_type]])
     target_cell_type_proportion_in_reference_cell_type_radius <- n_target_cells_in_reference_cell_type_radius / n_cells_in_reference_cell_type_radius
-    n_target_cells_in_spe <- sum(spatial_df[[feature_colname]] == target_cell_type)
-    target_cell_type_proportion_in_spe <- n_target_cells_in_spe / n_cells_in_spe
-    target_cell_type_co_occurrence <- target_cell_type_proportion_in_reference_cell_type_radius / target_cell_type_proportion_in_spe
+    n_target_cells_in_spatial_df <- sum(spatial_df[[feature_colname]] == target_cell_type)
+    target_cell_type_proportion_in_spatial_df <- n_target_cells_in_spatial_df / n_cells_in_spatial_df
+    target_cell_type_co_occurrence <- target_cell_type_proportion_in_reference_cell_type_radius / target_cell_type_proportion_in_spatial_df
     
     co_occurrence_df[[target_cell_type]] <- target_cell_type_co_occurrence
   }
@@ -317,7 +312,6 @@ calculate_all_single_radius_cc_metrics2D <- function(spatial_df,
   
   return(result)
 }
-
 
 calculate_cell_proportion_grid_metrics2D <- function(spatial_df, 
                                                      n_splits,
@@ -327,8 +321,10 @@ calculate_cell_proportion_grid_metrics2D <- function(spatial_df,
                                                      plot_image = TRUE) {
   
   # Check input parameters
-  if (class(spatial_df) != "data.frame") {
-    stop("`spatial_df` is not a data.frame object.")
+  
+  # Check if there are empty strings or string of only spaces in 'cell_types_of_interest'
+  if (length(spatial_df[[feature_colname]][trimws(spatial_df[[feature_colname]]) == ""]) > 0) {
+    stop("spatial_df cannot contain cell types that are an empty string or a string of only spaces.")
   }
   if (!(is.integer(n_splits) && length(n_splits) == 1 || (is.numeric(n_splits) && length(n_splits) == 1 && n_splits > 0 && n_splits%%1 == 0))) {
     stop("`n_splits` is not a positive integer.")
@@ -361,11 +357,11 @@ calculate_cell_proportion_grid_metrics2D <- function(spatial_df,
     stop("`plot_image` is not a logical (TRUE or FALSE).")
   }
   
-  # Add grid metrics to spatial_df
+  # Get grid metrics
   grid_metrics <- get_spatial_df_grid_metrics2D(spatial_df, n_splits, feature_colname)
   
   # Get grid_prism_cell_matrix from spatial_df
-  grid_prism_cell_matrix <- grid_metrics$grid_prism_cell_matrix
+  grid_prism_cell_matrix <-   grid_prism_cell_matrix <- grid_metrics$grid_prism_cell_matrix
   
   ## Define data frame which contains all results
   n_grid_prisms <- n_splits^2
@@ -406,8 +402,10 @@ calculate_cell_proportions2D <- function(spatial_df,
                                          plot_image = TRUE) {
   
   # Check input parameters
-  if (class(spatial_df) != "data.frame") {
-    stop("`spatial_df` is not a data.frame object.")
+  
+  # Check if there are empty strings or string of only spaces in 'cell_types_of_interest'
+  if (length(spatial_df[[feature_colname]][trimws(spatial_df[[feature_colname]]) == ""]) > 0) {
+    stop("spatial_df cannot contain cell types that are an empty string or a string of only spaces.")
   }
   if (ncol(spatial_df) == 0) {
     stop("No cells found for calculating cell proportions.")
@@ -473,6 +471,45 @@ calculate_cell_proportions2D <- function(spatial_df,
   
   return(cell_proportions)
 }
+calculate_neighbourhood_counts_gradient2D <- function(spatial_df, 
+                                                      reference_cell_type, 
+                                                      target_cell_types, 
+                                                      radii, 
+                                                      feature_colname = "Cell.Type",
+                                                      plot_image = TRUE) {
+  
+  if (!(is.numeric(radii) && length(radii) > 1)) {
+    stop("`radii` is not a numeric vector with at least 2 values")
+  }
+  
+  result <- data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types)))
+  colnames(result) <- target_cell_types
+  
+  for (i in seq(length(radii))) {
+    neighbourhood_counts_df <- calculate_neighbourhood_counts2D(spatial_df,
+                                                                reference_cell_type,
+                                                                target_cell_types,
+                                                                radii[i],
+                                                                feature_colname,
+                                                                FALSE,
+                                                                FALSE)
+    
+    if (is.null(neighbourhood_counts_df)) return(NULL)
+    
+    neighbourhood_counts_df$ref_cell_id <- NULL
+    result[i, ] <- apply(neighbourhood_counts_df, 2, mean)
+  }
+  # Add a radius column to the result
+  result$radius <- radii
+  
+  if (plot_image) {
+    fig <- plot_neighbourhood_counts_gradient2D(result, reference_cell_type)
+    methods::show(fig)
+  }
+  
+  return(result)
+}
+
 calculate_cells_in_neighbourhood_gradient2D <- function(spatial_df, 
                                                         reference_cell_type, 
                                                         target_cell_types, 
@@ -488,49 +525,11 @@ calculate_cells_in_neighbourhood_gradient2D <- function(spatial_df,
   colnames(result) <- target_cell_types
   
   for (i in seq(length(radii))) {
-    cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood2D(spatial_df,
-                                                                    reference_cell_type,
-                                                                    target_cell_types,
-                                                                    radii[i],
-                                                                    feature_colname,
-                                                                    FALSE,
-                                                                    FALSE)
-    
-    if (is.null(cells_in_neighbourhood_df)) return(NULL)
-    
-    cells_in_neighbourhood_df$ref_cell_id <- NULL
-    result[i, ] <- apply(cells_in_neighbourhood_df, 2, mean)
-  }
-  # Add a radius column to the result
-  result$radius <- radii
-  
-  if (plot_image) {
-    fig <- plot_cells_in_neighbourhood_gradient2D(result, reference_cell_type)
-    methods::show(fig)
-  }
-  
-  return(result)
-}
-calculate_cells_in_neighbourhood_proportions_gradient2D <- function(spatial_df, 
-                                                                    reference_cell_type, 
-                                                                    target_cell_types, 
-                                                                    radii, 
-                                                                    feature_colname = "Cell.Type",
-                                                                    plot_image = TRUE) {
-  
-  if (!(is.numeric(radii) && length(radii) > 1)) {
-    stop("`radii` is not a numeric vector with at least 2 values")
-  }
-  
-  result <- data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types)))
-  colnames(result) <- target_cell_types
-  
-  for (i in seq(length(radii))) {
-    cell_proportions_neighbourhood_proportions_df <- calculate_cells_in_neighbourhood_proportions2D(spatial_df,
-                                                                                                    reference_cell_type,
-                                                                                                    target_cell_types,
-                                                                                                    radii[i],
-                                                                                                    feature_colname)
+    cell_proportions_neighbourhood_proportions_df <- calculate_cells_in_neighbourhood2D(spatial_df,
+                                                                                        reference_cell_type,
+                                                                                        target_cell_types,
+                                                                                        radii[i],
+                                                                                        feature_colname)
     
     if (is.null(cell_proportions_neighbourhood_proportions_df)) return(NULL)
     
@@ -542,51 +541,54 @@ calculate_cells_in_neighbourhood_proportions_gradient2D <- function(spatial_df,
   
   # Plot
   if (plot_image) {
-    fig <- plot_cells_in_neighbourhood_proportions_gradient2D(result, reference_cell_type)
+    fig <- plot_cells_in_neighbourhood_gradient2D(result, reference_cell_type)
     methods::show(fig)
   }
   
   return(result)
 }
-calculate_cells_in_neighbourhood_proportions2D <- function(spatial_df, 
-                                                           reference_cell_type, 
-                                                           target_cell_types, 
-                                                           radius, 
-                                                           feature_colname = "Cell.Type") {
-  
-  ## Get cells in neighbourhood df
-  cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood2D(spatial_df,
-                                                                  reference_cell_type,
-                                                                  c(reference_cell_type, target_cell_types),
-                                                                  radius,
-                                                                  feature_colname,
-                                                                  FALSE,
-                                                                  FALSE)
-  
-  if (is.null(cells_in_neighbourhood_df)) return(NULL)
-  
-  cells_in_neighbourhood_df[ , paste(target_cell_types, "_prop", sep = "")] <- 
-    cells_in_neighbourhood_df[ , target_cell_types] / (cells_in_neighbourhood_df[ , target_cell_types] + cells_in_neighbourhood_df[ , reference_cell_type])
-  
-  # If reference cell type is in target cell types, proportion should be 1
-  if (reference_cell_type %in% target_cell_types) {
-    cells_in_neighbourhood_df[cells_in_neighbourhood_df[[reference_cell_type]] != 0, paste(reference_cell_type, "_prop", sep = "")] <- 1
-  }
-  
-  return(cells_in_neighbourhood_df)
-}
+
 calculate_cells_in_neighbourhood2D <- function(spatial_df, 
                                                reference_cell_type, 
                                                target_cell_types, 
                                                radius, 
-                                               feature_colname = "Cell.Type",
-                                               show_summary = TRUE,
-                                               plot_image = TRUE) {
+                                               feature_colname = "Cell.Type") {
+  
+  ## Get cells in neighbourhood df
+  neighbourhood_counts_df <- calculate_neighbourhood_counts2D(spatial_df,
+                                                              reference_cell_type,
+                                                              c(reference_cell_type, target_cell_types),
+                                                              radius,
+                                                              feature_colname,
+                                                              FALSE,
+                                                              FALSE)
+  
+  if (is.null(neighbourhood_counts_df)) return(NULL)
+  
+  neighbourhood_counts_df[ , paste(target_cell_types, "_prop", sep = "")] <- 
+    neighbourhood_counts_df[ , target_cell_types] / (neighbourhood_counts_df[ , target_cell_types] + neighbourhood_counts_df[ , reference_cell_type])
+  
+  # If reference cell type is in target cell types, proportion should be 1
+  if (reference_cell_type %in% target_cell_types) {
+    neighbourhood_counts_df[neighbourhood_counts_df[[reference_cell_type]] != 0, paste(reference_cell_type, "_prop", sep = "")] <- 1
+  }
+  
+  return(neighbourhood_counts_df)
+}
+calculate_neighbourhood_counts2D <- function(spatial_df, 
+                                             reference_cell_type, 
+                                             target_cell_types, 
+                                             radius, 
+                                             feature_colname = "Cell.Type",
+                                             show_summary = TRUE,
+                                             plot_image = TRUE) {
   
   
   # Check input parameters
-  if (class(spatial_df) != "data.frame") {
-    stop("`spatial_df` is not a data.frame object.")
+  
+  # Check if there are empty strings or string of only spaces in 'cell_types_of_interest'
+  if (length(spatial_df[[feature_colname]][trimws(spatial_df[[feature_colname]]) == ""]) > 0) {
+    stop("spatial_df cannot contain cell types that are an empty string or a string of only spaces.")
   }
   if (!(is.character(reference_cell_type) && length(reference_cell_type) == 1)) {
     stop("`reference_cell_type` is not a character.")
@@ -624,7 +626,7 @@ calculate_cells_in_neighbourhood2D <- function(spatial_df,
   
   if (is.null(spatial_df[["Cell.ID"]])) {
     warning("Temporarily adding Cell.ID column to your spatial_df")
-    spatial_df$Cell.ID <- paste("Cell", seq(nrow(spatial_df)), sep = "_")
+    spatial_df$Cell.ID <- paste("Cell", seq(ncol(spatial_df)), sep = "_")
   }  
   
   # Get spatial_df coords
@@ -663,12 +665,12 @@ calculate_cells_in_neighbourhood2D <- function(spatial_df,
   
   ## Print summary
   if (show_summary) {
-    print(summarise_cells_in_neighbourhood2D(result))    
+    print(summarise_neighbourhood_counts2D(result))    
   }
   
   ## Plot
   if (plot_image) {
-    fig <- plot_cells_in_neighbourhood_violin2D(result, reference_cell_type)
+    fig <- plot_neighbourhood_counts_violin2D(result, reference_cell_type)
     methods::show(fig)
   }
   
@@ -718,28 +720,28 @@ calculate_co_occurrence2D <- function(spatial_df,
   # Get all cell types in spatial_df
   all_cell_types <- unique(spatial_df[[feature_colname]])
   
-  cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood2D(spatial_df,
-                                                                  reference_cell_type,
-                                                                  all_cell_types,
-                                                                  radius,
-                                                                  feature_colname,
-                                                                  F,
-                                                                  F)
+  neighbourhood_counts_df <- calculate_neighbourhood_counts2D(spatial_df,
+                                                              reference_cell_type,
+                                                              all_cell_types,
+                                                              radius,
+                                                              feature_colname,
+                                                              F,
+                                                              F)
   
-  cells_in_neighbourhood_df$total <- rowSums(cells_in_neighbourhood_df[, -1], na.rm = TRUE)
-
+  neighbourhood_counts_df$total <- rowSums(neighbourhood_counts_df[, -1], na.rm = TRUE)
+  
   result <- data.frame(reference = reference_cell_type)
   
   # Get total number of cells in spatial_df
   n_cells_in_spatial_df <- length(spatial_df[[feature_colname]])
   
   # Get total number of cells in radius around reference cell type
-  n_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_df$total)
+  n_cells_in_reference_cell_type_radius <- sum(neighbourhood_counts_df$total)
   
   for (target_cell_type in target_cell_types) {
     
     # Get total number of target cells in radius around reference cell type
-    n_target_cells_in_reference_cell_type_radius <- sum(cells_in_neighbourhood_df[[target_cell_type]])
+    n_target_cells_in_reference_cell_type_radius <- sum(neighbourhood_counts_df[[target_cell_type]])
     
     # Get proportion of target cells in radius around reference cell type
     target_cell_type_proportion_in_reference_cell_type_radius <- n_target_cells_in_reference_cell_type_radius / n_cells_in_reference_cell_type_radius
@@ -800,15 +802,15 @@ calculate_cross_G2D <- function(spatial_df,
   
   ### Calculate the observed cross_G
   # Get the number of target cells in the radius around each reference cell
-  cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood2D(spatial_df,
-                                                                  reference_cell_type,
-                                                                  target_cell_type,
-                                                                  radius,
-                                                                  feature_colname,
-                                                                  show_summary = FALSE,
-                                                                  plot_image = FALSE)
+  neighbourhood_counts_df <- calculate_neighbourhood_counts2D(spatial_df,
+                                                              reference_cell_type,
+                                                              target_cell_type,
+                                                              radius,
+                                                              feature_colname,
+                                                              show_summary = FALSE,
+                                                              plot_image = FALSE)
   
-  reference_target_interactions <- cells_in_neighbourhood_df[[target_cell_type]]
+  reference_target_interactions <- neighbourhood_counts_df[[target_cell_type]]
   
   # cross_G: essentially the proportion of reference cells with at least 1 target cell within the chosen radius.
   observed_cross_G <- sum(reference_target_interactions != 0) / length(reference_target_interactions)
@@ -820,14 +822,14 @@ calculate_cross_G2D <- function(spatial_df,
   length <- round(max(spatial_df_coords$Cell.X.Position) - min(spatial_df_coords$Cell.X.Position))
   width  <- round(max(spatial_df_coords$Cell.Y.Position) - min(spatial_df_coords$Cell.Y.Position))
   
-  # Get volume of the window the cells are in
-  volume <- length * width
+  # Get area of the window the cells are in
+  area <- length * width
   
   # Get the number of target cells
   n_target_cells <- sum(spatial_df[[feature_colname]] == target_cell_type)
   
   # Get target_cell_type intensity (density)
-  target_cell_type_intensity <- n_target_cells / volume
+  target_cell_type_intensity <- n_target_cells / area
   
   # Apply formula
   expected_cross_G <- 1 - exp(-1 * target_cell_type_intensity * pi * radius^2)
@@ -884,7 +886,7 @@ calculate_cross_K2D <- function(spatial_df,
   
   if (is.null(spatial_df[["Cell.ID"]])) {
     warning("Temporarily adding Cell.ID column to your spatial_df")
-    spatial_df$Cell.ID <- paste("Cell", seq(nrow(spatial_df)), sep = "_")
+    spatial_df$Cell.ID <- paste("Cell", seq(ncol(spatial_df)), sep = "_")
   }  
   
   
@@ -905,9 +907,8 @@ calculate_cross_K2D <- function(spatial_df,
   
   length <- round(max(spatial_df_coords$Cell.X.Position) - min(spatial_df_coords$Cell.X.Position))
   width  <- round(max(spatial_df_coords$Cell.Y.Position) - min(spatial_df_coords$Cell.Y.Position))
-
-  ## Get volume of the window the cells are in
-  volume <- length * width
+  ## Get area of the window the cells are in
+  area <- length * width
   
   # Number of reference cell types is constant
   n_ref_cells <- sum(spatial_df[[feature_colname]] == reference_cell_type)
@@ -915,17 +916,17 @@ calculate_cross_K2D <- function(spatial_df,
   # Define result data frame
   result <- data.frame(reference = reference_cell_type, expected = expected_cross_K)
   
-  cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood2D(spatial_df,
-                                                                  reference_cell_type,
-                                                                  target_cell_types,
-                                                                  radius,
-                                                                  feature_colname,
-                                                                  show_summary = FALSE,
-                                                                  plot_image = FALSE)
+  neighbourhood_counts_df <- calculate_neighbourhood_counts2D(spatial_df,
+                                                              reference_cell_type,
+                                                              target_cell_types,
+                                                              radius,
+                                                              feature_colname,
+                                                              show_summary = FALSE,
+                                                              plot_image = FALSE)
   
   for (target_cell_type in target_cell_types) {
     
-    n_ref_tar_interactions <- sum(cells_in_neighbourhood_df[[target_cell_type]])
+    n_ref_tar_interactions <- sum(neighbourhood_counts_df[[target_cell_type]])
     
     n_tar_cells <- sum(spatial_df[[feature_colname]] == target_cell_type)
     
@@ -934,7 +935,7 @@ calculate_cross_K2D <- function(spatial_df,
       observed_cross_K <- NA
     }
     else {
-      observed_cross_K <- (volume * n_ref_tar_interactions) / (n_ref_cells * n_tar_cells)  
+      observed_cross_K <- (area * n_ref_tar_interactions) / (n_ref_cells * n_tar_cells)  
     }
     result[[target_cell_type]] <- observed_cross_K
   }
@@ -1011,30 +1012,31 @@ calculate_entropy_background2D <- function(spatial_df,
   
   return(entropy) 
 }
-calculate_entropy_gradient2D <- function(spatial_df,
-                                         reference_cell_type,
-                                         target_cell_types,
-                                         radii,
-                                         feature_colname = "Cell.Type",
-                                         plot_image = TRUE) {
+
+calculate_neighbourhood_entropy_gradient2D <- function(spatial_df,
+                                                       reference_cell_type,
+                                                       target_cell_types,
+                                                       radii,
+                                                       feature_colname = "Cell.Type",
+                                                       plot_image = TRUE) {
   
   if (!(is.numeric(radii) && length(radii) > 1)) {
     stop("`radii` is not a numeric vector with at least 2 values")
   }
   
-  result <- data.frame(matrix(nrow = length(radii), ncol = 1))
-  colnames(result) <- "entropy"
+  result <- data.frame(matrix(nrow = length(radii), ncol = length(target_cell_types)))
+  colnames(result) <- target_cell_types
   
   for (i in seq(length(radii))) {
-    entropy_df <- calculate_entropy2D(spatial_df,
-                                      reference_cell_type,
-                                      target_cell_types,
-                                      radii[i],
-                                      feature_colname)
+    neighbourhood_entropy_df <- calculate_neighbourhood_entropy2D(spatial_df,
+                                                                  reference_cell_type,
+                                                                  target_cell_types,
+                                                                  radii[i],
+                                                                  feature_colname)
     
-    if (is.null(entropy_df)) return(NULL)
+    if (is.null(neighbourhood_entropy_df)) return(NULL)
     
-    result[i, "entropy"] <- mean(entropy_df$entropy, na.rm = T)
+    result[i, ] <- apply(neighbourhood_entropy_df[ , paste(target_cell_types, "_entropy", sep = "")], 2, mean, na.rm = T)
   }
   
   # Add a radius column to the result
@@ -1042,12 +1044,13 @@ calculate_entropy_gradient2D <- function(spatial_df,
   
   if (plot_image) {
     expected_entropy <- calculate_entropy_background2D(spatial_df, target_cell_types, feature_colname)
-    fig <- plot_entropy_gradient2D(result, expected_entropy, reference_cell_type, target_cell_types)
+    fig <- plot_neighbourhood_entropy_gradient2D(result, reference_cell_type)
     methods::show(fig)
   }
   
   return(result)
 }
+
 calculate_entropy_grid_metrics2D <- function(spatial_df, 
                                              n_splits,
                                              cell_types_of_interest,
@@ -1055,8 +1058,10 @@ calculate_entropy_grid_metrics2D <- function(spatial_df,
                                              plot_image = TRUE) {
   
   # Check input parameters
-  if (class(spatial_df) != "data.frame") {
-    stop("`spatial_df` is not a data.frame object.")
+  
+  # Check if there are empty strings or string of only spaces in 'cell_types_of_interest'
+  if (length(spatial_df[[feature_colname]][trimws(spatial_df[[feature_colname]]) == ""]) > 0) {
+    stop("spatial_df cannot contain cell types that are an empty string or a string of only spaces.")
   }
   if (!(is.integer(n_splits) && length(n_splits) == 1 || (is.numeric(n_splits) && length(n_splits) == 1 && n_splits > 0 && n_splits%%1 == 0))) {
     stop("`n_splits` is not a positive integer.")
@@ -1085,14 +1090,14 @@ calculate_entropy_grid_metrics2D <- function(spatial_df,
     stop("`plot_image` is not a logical (TRUE or FALSE).")
   }
   
-  # Add grid metrics to spatial_df
+  # Get grid metrics
   grid_metrics <- get_spatial_df_grid_metrics2D(spatial_df, n_splits, feature_colname)
   
   # Get grid_prism_cell_matrix from spatial_df
   grid_prism_cell_matrix <- grid_metrics$grid_prism_cell_matrix
   
   ## Define data frame which contains all results
-  n_grid_prisms <- n_splits^2
+  n_grid_prisms <- n_splits^3
   result <- data.frame(row.names = seq(n_grid_prisms))
   
   for (cell_type in cell_types_of_interest) {
@@ -1105,7 +1110,7 @@ calculate_entropy_grid_metrics2D <- function(spatial_df,
   
   ## Use proportion data frame to get entropy
   calculate_entropy <- function(x) {
-    entropy <- -1 * sum(x * ifelse(is.infinite(log(x, length(x))), 0, log(x, length(x))))
+    entropy <- -1 * sum(x * ifelse(is.infinite(log(x, 2)), 0, log(x, 2))) / log(length(x), 2)
     return(entropy)
   }
   result$entropy <- apply(df_props, 1, calculate_entropy)
@@ -1121,11 +1126,11 @@ calculate_entropy_grid_metrics2D <- function(spatial_df,
   
   return(result)
 }
-calculate_entropy2D <- function(spatial_df,
-                                reference_cell_type,
-                                target_cell_types,
-                                radius,
-                                feature_colname = "Cell.Type") {
+calculate_neighbourhood_entropy2D <- function(spatial_df,
+                                              reference_cell_type,
+                                              target_cell_types,
+                                              radius,
+                                              feature_colname = "Cell.Type") {
   
   # Check target_cell_types
   if (!(is.character(target_cell_types) && length(target_cell_types) >= 2)) {
@@ -1133,23 +1138,22 @@ calculate_entropy2D <- function(spatial_df,
   }
   
   ## Users should ensure include the reference_cell_type as one of the target_cell_types
-  cells_in_neighbourhood_proportion_df <- calculate_cells_in_neighbourhood_proportions2D(spatial_df,
-                                                                                         reference_cell_type,
-                                                                                         target_cell_types,
-                                                                                         radius,
-                                                                                         feature_colname)
+  cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood2D(spatial_df,
+                                                                  reference_cell_type,
+                                                                  target_cell_types,
+                                                                  radius,
+                                                                  feature_colname)
   
-  if (is.null(cells_in_neighbourhood_proportion_df)) return(NULL)
-
-  ## Get entropy for target_cell_type
-  cells_in_neighbourhood_proportion_df[ , paste(target_cell_types, "_entropy", sep = "")] <- 
+  if (is.null(cells_in_neighbourhood_df)) return(NULL)
+  
+  ## Get neighbourhood_entropy for target_cell_type
+  cells_in_neighbourhood_df[ , paste(target_cell_types, "_entropy", sep = "")] <- 
     -1 * 
-    (cells_in_neighbourhood_proportion_df[ , paste(target_cell_types, "_prop", sep = "")] * log(cells_in_neighbourhood_proportion_df[ , paste(target_cell_types, "_prop", sep = "")], 2) +
-    (1 - cells_in_neighbourhood_proportion_df[ , paste(target_cell_types, "_prop", sep = "")]) * log(1 - (cells_in_neighbourhood_proportion_df[ , paste(target_cell_types, "_prop", sep = "")]), 2))
+    (cells_in_neighbourhood_df[ , paste(target_cell_types, "_prop", sep = "")] * log(cells_in_neighbourhood_df[ , paste(target_cell_types, "_prop", sep = "")], 2) +
+       (1 - cells_in_neighbourhood_df[ , paste(target_cell_types, "_prop", sep = "")]) * log(1 - (cells_in_neighbourhood_df[ , paste(target_cell_types, "_prop", sep = "")]), 2))
   
-  return(cells_in_neighbourhood_proportion_df)
+  return(cells_in_neighbourhood_df)
 }
-
 
 calculate_minimum_distances_between_cell_types2D <- function(spatial_df,
                                                              cell_types_of_interest = NULL,
@@ -1158,8 +1162,10 @@ calculate_minimum_distances_between_cell_types2D <- function(spatial_df,
                                                              plot_image = TRUE) {
   
   # Check input parameters
-  if (class(spatial_df) != "data.frame") {
-    stop("`spatial_df` is not a data.frame object.")
+  
+  # Check if there are empty strings or string of only spaces in 'cell_types_of_interest'
+  if (length(spatial_df[[feature_colname]][trimws(spatial_df[[feature_colname]]) == ""]) > 0) {
+    stop("spatial_df cannot contain cell types that are an empty string or a string of only spaces.")
   }
   if (ncol(spatial_df) < 2) {
     stop("There must be at least two cells in spatial_df.")
@@ -1182,7 +1188,7 @@ calculate_minimum_distances_between_cell_types2D <- function(spatial_df,
   
   if (is.null(spatial_df[["Cell.ID"]])) {
     warning("Temporarily adding Cell.ID column to your spatial_df")
-    spatial_df$Cell.ID <- paste("Cell", seq(nrow(spatial_df)), sep = "_")
+    spatial_df$Cell.ID <- paste("Cell", seq(ncol(spatial_df)), sep = "_")
   }  
   
   # De-factor feature column in spatial_df object
@@ -1328,6 +1334,7 @@ calculate_mixing_scores_gradient2D <- function(spatial_df,
   
   return(result)
 }
+
 calculate_mixing_scores2D <- function(spatial_df, 
                                       reference_cell_types, 
                                       target_cell_types, 
@@ -1366,20 +1373,20 @@ calculate_mixing_scores2D <- function(spatial_df,
       
       
       ## Get cells in neighbourhood df
-      cells_in_neighbourhood_df <- calculate_cells_in_neighbourhood2D(spatial_df,
-                                                                      reference_cell_type,
-                                                                      c(reference_cell_type, target_cell_type),
-                                                                      radius,
-                                                                      feature_colname,
-                                                                      FALSE,
-                                                                      FALSE)
+      neighbourhood_counts_df <- calculate_neighbourhood_counts2D(spatial_df,
+                                                                  reference_cell_type,
+                                                                  c(reference_cell_type, target_cell_type),
+                                                                  radius,
+                                                                  feature_colname,
+                                                                  FALSE,
+                                                                  FALSE)
       
       # Get number of ref-ref interactions
       # Halve it to avoid counting each ref-ref interaction twice
-      n_ref_ref_interactions <- 0.5 * sum(cells_in_neighbourhood_df[[reference_cell_type]]) 
+      n_ref_ref_interactions <- 0.5 * sum(neighbourhood_counts_df[[reference_cell_type]]) 
       
       # Get number of ref-tar interactions
-      n_ref_tar_interactions <- sum(cells_in_neighbourhood_df[[target_cell_type]]) 
+      n_ref_tar_interactions <- sum(neighbourhood_counts_df[[target_cell_type]]) 
       
       
       # Can't get mixing scores if there are no target cells
@@ -1444,8 +1451,10 @@ calculate_pairwise_distances_between_cell_types2D <- function(spatial_df,
                                                               plot_image = TRUE) {
   
   # Check input parameters
-  if (class(spatial_df) != "data.frame") {
-    stop("`spatial_df` is not a data.frame object.")
+  
+  # Check if there are empty strings or string of only spaces in 'cell_types_of_interest'
+  if (length(spatial_df[[feature_colname]][trimws(spatial_df[[feature_colname]]) == ""]) > 0) {
+    stop("spatial_df cannot contain cell types that are an empty string or a string of only spaces.")
   }
   if (ncol(spatial_df) < 2) {
     stop("There must be at least two cells in spatial_df.")
@@ -1468,7 +1477,7 @@ calculate_pairwise_distances_between_cell_types2D <- function(spatial_df,
   
   if (is.null(spatial_df[["Cell.ID"]])) {
     warning("Temporarily adding Cell.ID column to your spatial_df")
-    spatial_df$Cell.ID <- paste("Cell", seq(nrow(spatial_df)), sep = "_")
+    spatial_df$Cell.ID <- paste("Cell", seq(ncol(spatial_df)), sep = "_")
   }
   
   # De-factor feature column in spatial_df object
@@ -1498,7 +1507,8 @@ calculate_pairwise_distances_between_cell_types2D <- function(spatial_df,
   }
   
   # Calculate cell to cell distances
-  distance_matrix <- -1 * apcluster::negDistMat(spatial_df[ , c("Cell.X.Position", "Cell.Y.Position")])
+  spatial_df_coords <- spatial_df[ , c("Cell.X.Position", "Cell.Y.Position")]
+  distance_matrix <- -1 * apcluster::negDistMat(spatial_df_coords)
   rownames(distance_matrix) <- spatial_df$Cell.ID
   colnames(distance_matrix) <- spatial_df$Cell.ID
   
@@ -1683,7 +1693,7 @@ calculate_spatial_autocorrelation2D <- function(grid_metrics,
   n_grid_prisms <- nrow(grid_metrics)
   
   ## Get splitting number (should be the cube root of n_grid_prisms)
-  n_splits <- (n_grid_prisms)^(1/3)
+  n_splits <- (n_grid_prisms)^(1/2)
   
   ## Find the coordinates of each grid prism
   x <- ((seq(n_grid_prisms) - 1) %% n_splits)
@@ -1705,7 +1715,7 @@ calculate_spatial_autocorrelation2D <- function(grid_metrics,
     weight_matrix <- ifelse(weight_matrix > 1, 0, 1)  
   }
   ## Use queen method: adjacent points get a weight of 1, otherwise, weight of 0
-  ## Adjacent points are within sqrt(2) unit apart. e.g. (0, 0) vs (0, 1)
+  ## Adjacent points are within sqrt(3) unit apart. e.g. (0, 0, 0) vs (0, 0, 1)
   else if (weight_method == "queen") {
     weight_matrix <- ifelse(weight_matrix > sqrt(2), 0, 1)  
   }
@@ -1735,8 +1745,10 @@ get_spatial_df_grid_metrics2D <- function(spatial_df,
                                           feature_colname = "Cell.Type") {
   
   # Check input parameters
-  if (class(spatial_df) != "data.frame") {
-    stop("`spatial_df` is not a data.frame object.")
+  
+  # Check if there are empty strings or string of only spaces in 'cell_types_of_interest'
+  if (length(spatial_df[[feature_colname]][trimws(spatial_df[[feature_colname]]) == ""]) > 0) {
+    stop("spatial_df cannot contain cell types that are an empty string or a string of only spaces.")
   }
   if (!(is.integer(n_splits) && length(n_splits) == 1 || (is.numeric(n_splits) && length(n_splits) == 1 && n_splits > 0 && n_splits%%1 == 0))) {
     stop("`n_splits` is not a positive integer.")
@@ -1791,10 +1803,409 @@ get_spatial_df_grid_metrics2D <- function(spatial_df,
 
 
 
-summarise_cells_in_neighbourhood2D <- function(cells_in_neighbourhood_df) {
+plot_neighbourhood_counts_gradient2D <- function(neighbourhood_counts_gradient_df, 
+                                                 reference_cell_type = NULL) {
+  
+  plot_result <- reshape2::melt(neighbourhood_counts_gradient_df, "radius")
+  
+  fig <- ggplot(plot_result, aes(radius, value, color = variable)) + 
+    geom_line() + 
+    labs(title = "Average neighbourhood counts gradient", x = "Radius", y = "Average neighbourhood counts") + 
+    scale_color_discrete(name = "Cell type") +
+    theme_bw()
+  
+  if (!is.null(reference_cell_type)) {
+    fig <- fig + labs(subtitle = paste("Reference: ", reference_cell_type, sep = ""))
+  }
+  
+  return(fig)
+}
+plot_cells_in_neighbourhood_gradient2D <- function(cells_in_neighbourhood_gradient_df, 
+                                                   reference_cell_type = NULL) {
+  
+  plot_result <- reshape2::melt(cells_in_neighbourhood_gradient_df, id.vars = c("radius"))
+  fig <- ggplot(plot_result, aes(radius, value, color = variable)) +
+    geom_point() +
+    geom_line() +
+    labs(title = "Average cells in neighbourhood gradient", x = "Radius", y = "Cell proportion", color = "Cell type") +
+    theme_bw() +
+    ylim(0, 1)
+  
+  if (!is.null(reference_cell_type)) {
+    fig <- fig + labs(subtitle = paste("Reference: ", reference_cell_type, sep = ""))
+  }
+  
+  return(fig)
+}
+## For scales parameter, use "free_x" or "free". "free_y" looks silly
+plot_neighbourhood_counts_violin2D <- function(neighbourhood_counts_df, 
+                                               reference_cell_type, scales = "free_x") {
   
   ## Target cell types will be all the columns except the first column
-  target_cell_types <- colnames(cells_in_neighbourhood_df)[c(-1)]
+  target_cell_types <- colnames(neighbourhood_counts_df)[c(-1)]
+  
+  df <- reshape2::melt(neighbourhood_counts_df, measure.vars = target_cell_types)
+  colnames(df) <- c("ref_cell_id", "tar_cell_type", "count")
+  
+  # setting these variables to NULL as otherwise get "no visible binding for global variable" in R check
+  tar_cell_type <- count <- NULL
+  
+  fig <- ggplot(df, aes(x = tar_cell_type, y = count)) + 
+    geom_violin() +
+    facet_wrap(~tar_cell_type, scales=scales, strip.position="bottom") +
+    theme_bw() +
+    theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
+    labs(title=paste("Neighbourhood counts of", reference_cell_type, "cells"), x = "Target cell type", y = "Neighbourhood counts") +
+    stat_summary(fun.data = "mean_sdl", fun.args = list(mult= 1), colour = "red")
+  
+  message("Plots show mean ± sd")
+  
+  return(fig)
+}
+plot_cells2D <- function(spatial_df,
+                         plot_cell_types = NULL,
+                         plot_colours = NULL,
+                         feature_colname = "Cell.Type") {
+  
+  # Check input parameters
+  
+  if (!is.null(plot_cell_types)) {
+    if(!is.character(plot_cell_types)) {
+      stop("`plot_cell_types` is not a character vector.")
+    }
+  } 
+  if (!is.null(plot_colours)) {
+    non_colours <- plot_colours[which(!(sapply(plot_colours, function(X) {
+      tryCatch(is.matrix(col2rgb(X)), 
+               error = function(e) FALSE)
+    })))]
+    if (length(non_colours) > 0) {
+      stop(paste("The following plot_colours are not colours:\n   ",
+                 paste(non_colours, collapse = ", ")))
+    } 
+  }
+  if (!is.character(feature_colname)) {
+    stop("`feature_colname` is not a character.")
+  }
+  if (is.null(spatial_df[[feature_colname]])) {
+    stop(paste(feature_colname, "is not a valid column in your spatial_df object."))
+  }
+  
+  ## Convert spatial_df object to data frame
+  df <- spatial_df
+  
+  ## If no cell types chosen, use all cell types found in data frame
+  if (is.null(plot_cell_types)) {
+    warning("plot_cell_types not spatial_dfcified, all cell types found in the spatial_df object will be used.")
+    plot_cell_types <- unique(df[["Cell.Type"]])
+  }
+  ## If no colours inputted, use rainbow palette
+  if (is.null(plot_colours)) {
+    warning("plot_colours not spatial_dfcified, rainbow palette will be used.")
+    plot_colours <- rainbow(length(plot_cell_types))
+  }
+  ## User inputs mismatching cell types and colours
+  if (length(plot_cell_types) != length(plot_colours)) {
+    stop("Length of plot_cell_types is not equal to length of plot_colours")
+  }
+  
+  ## If cell types have been chosen, check they are found in the spatial_df object
+  spatial_df_cell_types <- unique(spatial_df[[feature_colname]])
+  unknown_cell_types <- setdiff(plot_cell_types, spatial_df_cell_types)
+  
+  if (length(unknown_cell_types) == length(plot_cell_types)) {
+    stop("None of the plot_cell_types are found in the spatial_df object")
+  }
+  
+  if (length(unknown_cell_types) != 0) {
+    warning(paste("The following plot_cell_types are not found in the spatial_df object:\n   ",
+                  paste(unknown_cell_types, collapse = ", ")))
+    plot_colours <- plot_colours[which(plot_cell_types %in% spatial_df_cell_types)]
+    plot_cell_types <- intersect(plot_cell_types, spatial_df_cell_types)
+  }
+  
+  ## Factor for feature column
+  df[, "Cell.Type"] <- factor(df[, "Cell.Type"],
+                              levels = plot_cell_types)
+  
+  ## Plot
+  fig <- plot_ly(df,
+                 type = "scatter2D",
+                 mode = 'markers',
+                 x = ~Cell.X.Position,
+                 y = ~Cell.Y.Position,
+                 z = ~Cell.Z.Position,
+                 color = ~Cell.Type,
+                 colors = plot_colours,
+                 marker = list(size = 2))
+  
+  fig <- fig %>% layout(scene = list(xaxis = list(title = 'x', showgrid = T, showaxeslabels = F, showticklabels = T, gridwidth = 5, 
+                                                  titlefont = list(size = 20), tickfont = list(size = 15)),
+                                     yaxis = list(title = 'y', showgrid = T, showaxeslabels = F, showticklabels = T, gridwidth = 5,
+                                                  titlefont = list(size = 20), tickfont = list(size = 15)),
+                                     zaxis = list(title = 'z', showgrid = T, showaxeslabels = F, showticklabels = T, gridwidth = 5,
+                                                  titlefont = list(size = 20), tickfont = list(size = 15))))
+  
+  return(fig)
+}
+plot_co_occurrence_gradient2D <- function(co_occurrence_gradient_df) {
+  
+  target_cell_types <- colnames(co_occurrence_gradient_df)
+  target_cell_types <- target_cell_types[!target_cell_types %in% c("reference", "radius")]
+  
+  co_occurrence_gradient_df$expected <- 1
+  
+  plot_result <- reshape2::melt(co_occurrence_gradient_df, "radius", c(target_cell_types, "expected"))
+  
+  fig <- ggplot(plot_result, aes(x = radius, y = value, color = variable)) +
+    geom_line() +
+    labs(title = "Co-occurrence gradient", x = "Radius", y = "Co-occurrence value") +
+    scale_colour_discrete(name = "") +
+    theme_bw()
+  
+  return(fig) 
+}
+plot_cross_G_gradient2D <- function(cross_G_gradient_df, 
+                                    reference_cell_type = NULL, 
+                                    target_cell_type = NULL) {
+  
+  plot_result <- reshape2::melt(cross_G_gradient_df, "radius", c("observed_cross_G", "expected_cross_G"))
+  
+  fig <- ggplot(plot_result, aes(x = radius, y = value, color = variable)) +
+    geom_line() +
+    labs(title = "Cross G-function gradient", x = "Radius", y = "Cross G-function value") +
+    scale_colour_discrete(name = "", labels = c("Observed cross G", "Expected CSR cross G")) +
+    theme_bw()
+  
+  if (!is.null(reference_cell_type) && !is.null(target_cell_type)) {
+    fig <- fig + labs(subtitle = paste("Reference: ", reference_cell_type, ", Target: ", target_cell_type, sep = ""))
+  }
+  
+  return(fig) 
+}
+plot_cross_K_gradient_ratio2D <- function(cross_K_gradient_df) {
+  
+  target_cell_types <- colnames(cross_K_gradient_df)[!colnames(cross_K_gradient_df) %in% c("reference", "expected", "radius")]
+  
+  # Normalize columns by 'expected'
+  for (target_cell_type in target_cell_types) {
+    cross_K_gradient_df[[target_cell_type]] <- cross_K_gradient_df[[target_cell_type]] / cross_K_gradient_df$expected
+  }
+  cross_K_gradient_df$expected <- 1
+  
+  plot_result <- reshape2::melt(cross_K_gradient_df, "radius", c(target_cell_types, "expected"))
+  
+  fig <- ggplot(plot_result, aes(x = radius, y = value, color = variable)) +
+    geom_line() +
+    labs(title = "Cross K-function gradient ratio", x = "Radius", y = "Cross K-function ratio") +
+    scale_colour_discrete(name = "") +
+    theme_bw()
+  
+  return(fig) 
+}
+plot_cross_K_gradient2D <- function(cross_K_gradient_df) {
+  
+  target_cell_types <- colnames(cross_K_gradient_df)[!colnames(cross_K_gradient_df) %in% c("reference", "expected", "radius")]
+  
+  plot_result <- reshape2::melt(cross_K_gradient_df, "radius", c(target_cell_types, "expected"))
+  
+  fig <- ggplot(plot_result, aes(x = radius, y = value, color = variable)) +
+    geom_line() +
+    labs(title = "Cross K-function gradient", x = "Radius", y = "Cross K-function value") +
+    scale_colour_discrete(name = "") +
+    theme_bw()
+  
+  return(fig) 
+}
+plot_cross_L_gradient_ratio2D <- function(cross_L_gradient_df) {
+  
+  target_cell_types <- colnames(cross_L_gradient_df)[!colnames(cross_L_gradient_df) %in% c("reference", "expected", "radius")]
+  
+  # Normalize columns by 'expected'
+  for (target_cell_type in target_cell_types) {
+    cross_L_gradient_df[[target_cell_type]] <- cross_L_gradient_df[[target_cell_type]] / cross_L_gradient_df$expected
+  }
+  cross_L_gradient_df$expected <- 1
+  
+  plot_result <- reshape2::melt(cross_L_gradient_df, "radius", c(target_cell_types, "expected"))
+  
+  fig <- ggplot(plot_result, aes(x = radius, y = value, color = variable)) +
+    geom_line() +
+    labs(title = "Cross L-function gradient ratio", x = "Radius", y = "Cross L-function ratio") +
+    scale_colour_discrete(name = "") +
+    theme_bw()
+  
+  return(fig) 
+}
+plot_cross_L_gradient2D <- function(cross_L_gradient_df) {
+  
+  target_cell_types <- colnames(cross_L_gradient_df)[!colnames(cross_L_gradient_df) %in% c("reference", "expected", "radius")]
+  
+  plot_result <- reshape2::melt(cross_L_gradient_df, "radius", c(target_cell_types, "expected"))
+  
+  fig <- ggplot(plot_result, aes(x = radius, y = value, color = variable)) +
+    geom_line() +
+    labs(title = "Cross L-function gradient", x = "Radius", y = "Cross L-function value") +
+    scale_colour_discrete(name = "") +
+    theme_bw()
+  
+  return(fig) 
+}
+## For scales parameter, use "free_x" or "free". "free_y" looks silly
+plot_distances_between_cell_types_violin2D <- function(distances_df, 
+                                                       scales = "free_x") {
+  
+  # setting these variables to NULL as otherwise get "no visible binding for global variable" in R check
+  pair <- distance <- NULL
+  
+  fig <- ggplot(distances_df, aes(x = pair, y = distance)) + 
+    geom_violin() +
+    facet_wrap(~pair, scales=scales, strip.position="bottom") +
+    theme_bw() +
+    theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), plot.title = element_text(hjust = 0.5)) +
+    labs(title="Cell distances", x = "Reference/Target pair", y = "Distance") +
+    stat_summary(fun.data = "mean_sdl", fun.args = list(mult= 1), colour = "red")
+  
+  message("Plots show mean ± sd")
+  
+  return(fig)
+}
+
+plot_neighbourhood_entropy_gradient2D <- function(neighbourhood_entropy_gradient_df, 
+                                                  reference_cell_type = NULL) {
+  
+  plot_result <- reshape2::melt(neighbourhood_entropy_gradient_df, id.vars = c("radius"))
+  fig <- ggplot(plot_result, aes(radius, value, color = variable)) +
+    geom_point() +
+    geom_line() +
+    labs(title = "Neighbourhood entropy gradient", x = "Radius", y = "Neighbourhood entropy", color = "Cell type") +
+    theme_bw() +
+    ylim(0, 1)
+  
+  if (!is.null(reference_cell_type)) {
+    fig <- fig + labs(subtitle = paste("Reference: ", reference_cell_type, ", Target: ", paste(colnames(neighbourhood_entropy_gradient_df)[seq(ncol(neighbourhood_entropy_gradient_df) - 1)], collapse = ", "), sep = ""))
+  }
+  
+  return(fig)
+}
+
+
+
+plot_grid_metrics_continuous2D <- function(grid_metrics, 
+                                           metric_colname) {
+  
+  ## Check input parameters
+  if (!(is.character(metric_colname) && metric_colname %in% c("proportion", "entropy"))) {
+    stop("`metric_colname` is not 'proportion' or 'entropy'.")
+  }
+  if (is.null(grid_metrics[[metric_colname]])) {
+    stop("`metric_colname` is not a column in `grid_metrics`.")
+  }
+  
+  ## Color of each dot is related to its entropy
+  pal <- colorRampPalette(hcl.colors(n = 5, palette = "Red-Blue", rev = TRUE))
+  
+  ## Add size column and for NA entropy values, make the size small
+  grid_metrics$size <- ifelse(is.na(grid_metrics[[metric_colname]]), 3, 10)
+  
+  fig <- plot_ly(grid_metrics,
+                 type = "scatter2D",
+                 mode = 'markers',
+                 x = ~x_coord,
+                 y = ~y_coord,
+                 z = ~z_coord,
+                 color = as.formula(paste0('~', metric_colname)),
+                 colors = pal(nrow(grid_metrics)),
+                 marker = list(size = ~size),
+                 symbol = 1,
+                 symbols = "square")
+  
+  fig <- fig %>% layout(scene = list(xaxis = list(title = 'x'),
+                                     yaxis = list(title = 'y'),
+                                     zaxis = list(title = 'z')))
+  
+  return(fig)
+}
+plot_grid_metrics_discrete2D <- function(grid_metrics, 
+                                         metric_colname) {
+  
+  ## Check input parameters
+  if (!(is.character(metric_colname) && metric_colname %in% c("proportion", "entropy"))) {
+    stop("`metric_colname` is not 'proportion' or 'entropy'.")
+  }
+  if (is.null(grid_metrics[[metric_colname]])) {
+    stop("`metric_colname` is not a column in `grid_metrics`.")
+  }
+  
+  ## Define low, medium and high categories
+  # Low: between 0 and 1/3
+  # Medium: between 1/3 and 2/3
+  # High: between 2/3 and 1
+  
+  grid_metrics$rank <- ifelse(is.na(grid_metrics[[metric_colname]]), "na",
+                              ifelse(grid_metrics[[metric_colname]] < 1/3, "low",
+                                     ifelse(grid_metrics[[metric_colname]] < 2/3, "medium", "high")))
+  grid_metrics$rank <- factor(grid_metrics$rank, c("low", "medium", "high", "na"))
+  
+  fig <- plot_ly(grid_metrics,
+                 type = "scatter2D",
+                 mode = 'markers',
+                 x = ~x_coord,
+                 y = ~y_coord,
+                 z = ~z_coord,
+                 color = ~rank,
+                 colors = c("#AEB6E5", "#BC6EB9", "#A93154", "gray"),
+                 symbol = 1,
+                 symbols = "square",
+                 marker = list(size = 4))
+  
+  fig <- fig %>% layout(scene = list(xaxis = list(title = 'x'),
+                                     yaxis = list(title = 'y'),
+                                     zaxis = list(title = 'z')))
+  return(fig)
+}
+plot_mixing_scores_gradient2D <- function(mixing_scores_gradient_df, 
+                                          metric = "MS") {
+  
+  if (!metric %in% c("MS", "NMS")) {
+    stop("'metric' should be 'MS' or 'NMS', for mixing score and normalised mixing score respatial_dfctively.")
+  }
+  
+  if (metric == "NMS") {
+    plot_result <- mixing_scores_gradient_df
+    plot_result$expected_normalised_mixing_score <- 1
+    plot_result <- reshape2::melt(plot_result, "radius", c("normalised_mixing_score", "expected_normalised_mixing_score"))
+    
+    fig <- ggplot(plot_result, aes(x = radius, y = value, color = variable)) +
+      geom_line() +
+      labs(title = "Normalised mixing score (NMS) gradient", 
+           subtitle = paste("Reference: ", mixing_scores_gradient_df$ref_cell_type[1], ", Target: ", mixing_scores_gradient_df$tar_cell_type[1], sep = ""), 
+           x = "Radius", y = "NMS") +
+      scale_colour_discrete(name = "", labels = c("Observed NMS", "Expected CSR NMS")) +
+      theme_bw() 
+  }
+  else if (metric == "MS") {
+    plot_result <- mixing_scores_gradient_df
+    n_tar_cells <- plot_result$n_tar_cells[1]
+    n_ref_cells <- plot_result$n_ref_cells[1]
+    plot_result$expected_mixing_score <- n_tar_cells * n_ref_cells / ((n_ref_cells - 1) * n_ref_cells / 2)
+    plot_result <- reshape2::melt(plot_result, "radius", c("mixing_score", "expected_mixing_score"))
+    
+    fig <- ggplot(plot_result, aes(x = radius, y = value, color = variable)) +
+      geom_line() +
+      labs(title = "Mixing score (MS) gradient", 
+           subtitle = paste("Reference: ", mixing_scores_gradient_df$ref_cell_type[1], ", Target: ", mixing_scores_gradient_df$tar_cell_type[1], sep = ""), 
+           x = "Radius", y = "MS") +
+      scale_colour_discrete(name = "", labels = c("Observed MS", "Expected CSR MS  ")) +
+      theme_bw()  
+  }
+  return(fig)
+}
+
+summarise_neighbourhood_counts2D <- function(neighbourhood_counts_df) {
+  
+  ## Target cell types will be all the columns except the first column
+  target_cell_types <- colnames(neighbourhood_counts_df)[c(-1)]
   
   ## Set up data frame for summarised_results list
   df <- data.frame(row.names = c("mean", "min", "max", "median", "st_dev"))
@@ -1802,7 +2213,7 @@ summarise_cells_in_neighbourhood2D <- function(cells_in_neighbourhood_df) {
   for (target_cell_type in target_cell_types) {
     
     ## Get statistical measures for each target cell type
-    target_cell_type_values <- cells_in_neighbourhood_df[[target_cell_type]]
+    target_cell_type_values <- neighbourhood_counts_df[[target_cell_type]]
     df[[target_cell_type]] <- c(mean(target_cell_type_values),
                                 min(target_cell_type_values),
                                 max(target_cell_type_values),
@@ -1845,4 +2256,3 @@ summarise_distances_between_cell_types2D <- function(distances_df) {
   
   return(distances_df_summarised)
 }
-
