@@ -4,7 +4,7 @@ calculate_all_gradient_cc_metrics2D <- function(spe,
                                                 radii, 
                                                 feature_colname = "Cell.Type", 
                                                 plot_image = T) {
-  #
+  
   # Define constants
   cross_K_df_colnames <- c("reference",
                            "expected",
