@@ -933,7 +933,8 @@ calculate_neighbourhood_counts3D <- function(spe,
 ### Assume that clusters have uniform density and that the centre of each cluster is defined by its centre of mass
 ### Centre of mass can be estimated by taking the average of the x, y, and z coordinates of cells in the cluster
 
-calculate_center_of_clusters3D <- function(spe, cluster_colname) {
+calculate_center_of_clusters3D <- function(spe, 
+                                           cluster_colname) {
   
   # Check input parameters
   if (class(spe) != "SpatialExperiment") {
@@ -2260,7 +2261,8 @@ calculate_spatial_autocorrelation3D <- function(grid_metrics,
   
   return(I)
 }
-calculate_volume_of_clusters3D <- function(spe, cluster_colname) {
+calculate_volume_of_clusters3D <- function(spe, 
+                                           cluster_colname) {
   
   # Check input parameters
   if (class(spe) != "SpatialExperiment") {

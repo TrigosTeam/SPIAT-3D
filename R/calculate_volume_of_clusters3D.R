@@ -1,4 +1,5 @@
-calculate_volume_of_clusters3D <- function(spe, cluster_colname) {
+calculate_volume_of_clusters3D <- function(spe, 
+                                           cluster_colname) {
   
   # Check input parameters
   if (class(spe) != "SpatialExperiment") {
