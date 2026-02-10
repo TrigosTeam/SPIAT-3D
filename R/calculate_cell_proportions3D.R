@@ -1,17 +1,22 @@
 #' @title Calculate cell proportions in 3D spatial data.
 #'
-#' @description This function calculates the proportions of different cell types in a 3D SpatialExperiment object. 
-#'    It can optionally plot a bar chart of the cell proportions.
+#' @description This function calculates the proportions of different cell types 
+#'     in a 3D SpatialExperiment object. It can optionally plot a bar chart of 
+#'     the cell proportions.
 #'
-#' @param spe A SpatialExperiment object containing 3D spatial information for the cells.
-#' @param cell_types_of_interest A character vector specifying the cell types of interest.
-#'     If NULL, all cell types in the `feature_colname` column will be considered.
-#' @param feature_colname A string specifying the name of the column in the `colData` slot of the SpatialExperiment
-#'     object that contains the cell type information.
-#' @param plot_image A logical indicating whether to plot violin plots of the minimum distances 
-#'     between cell type pairs. Defaults to TRUE.
+#' @param spe A SpatialExperiment object containing 3D spatial information for 
+#'     the cells.
+#' @param cell_types_of_interest A character vector specifying the cell types of 
+#'     interest. If NULL, all cell types in the `feature_colname` column will be 
+#'     considered.
+#' @param feature_colname A string specifying the name of the column in the 
+#'     `colData` slot of the SpatialExperiment object that contains the cell 
+#'     type information.
+#' @param plot_image A logical indicating whether to plot violin plots of the 
+#'     minimum distances between cell type pairs. Defaults to TRUE.
 #'
-#' @return A data frame containing the cell types, their frequencies, proportions, and percentages.
+#' @return A data frame containing the cell types, their frequencies, 
+#'     proportions, and percentages.
 #'
 #' @examples
 #' cell_proportions <- calculate_cell_proportions3D(
