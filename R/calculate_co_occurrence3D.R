@@ -23,8 +23,8 @@
 #' @examples
 #' result <- calculate_co_occurrence3D(
 #'     spe = SPIAT-3D::simulated_spe,
-#'     reference = "Tumour",
-#'     target = c("Tumour", "Immune"),
+#'     reference_cell_type = "Tumour",
+#'     target_cell_types = c("Tumour", "Immune"),
 #'     radii = 30
 #'     feature_colname = "Cell.Type
 #' )

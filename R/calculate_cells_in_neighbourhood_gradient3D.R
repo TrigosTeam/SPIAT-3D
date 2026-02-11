@@ -26,8 +26,8 @@
 #' @examples
 #' result <- calculate_cells_in_neighbourhood_gradient3D(
 #'     spe = SPIAT-3D::simulated_spe,
-#'     reference = "Tumour",
-#'     target = c("Tumour", "Immune"),
+#'     reference_cell_type = "Tumour",
+#'     target_cell_types = c("Tumour", "Immune"),
 #'     radii = seq(20, 100, 10),
 #'     feature_colname = "Cell.Type",
 #'     plot_image = TRUE
