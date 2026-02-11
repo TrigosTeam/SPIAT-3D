@@ -1,3 +1,39 @@
+#' @title Calculate cross G on 3D spatial data.
+#'
+#' @description This function calculates the cross G on a 3D SpatialExperiment 
+#'     Object. This metric finds the proportion of reference cells which have at 
+#'     least one interaction with a target cell as well as the expected cross G 
+#'     values if the 3D spatial data followed a complete spatial randomness 
+#'     pattern. This is calculated for a single radius value.
+#' 
+#' @param spe A SpatialExperiment object containing 3D spatial information for 
+#'     the cells. Naming of spatial coordinates MUST be "Cell.X.Position", 
+#'     "Cell.Y.Position", "Cell.Z.Position" for the x-coordinate, y-coordinate 
+#'     and z-coordinate of each cell.
+#' @param reference_cell_type A string specifying the reference cell type.
+#' @param target_cell_type A string specifying the target cell type.
+#' @param radius A positive numeric specifying the radius value.
+#' @param feature_colname A string specifying the name of the column in the 
+#'     `colData` slot of the SpatialExperiment object that contains the cell 
+#'     type information. Defaults to "Cell.Type".
+#' @param plot_image A logical indicating whether to plot cross G gradient as a 
+#'     line graph showing both the observed and expected cross G values. 
+#'     Defaults to TRUE.
+#'
+#' @return A data frame containing observed and expected cross G values across 
+#'     each radii (rows).
+#'
+#' @examples
+#' result <- calculate_cross_G3D(
+#'     spe = SPIAT-3D::simulated_spe,
+#'     reference_cell_type = "Tumour",
+#'     target_cell_type = "Immune",
+#'     radius = 30,
+#'     feature_colname = "Cell.Type"
+#' )
+#' 
+#' @export
+
 calculate_cross_G3D <- function(spe,
                                 reference_cell_type,
                                 target_cell_type,
