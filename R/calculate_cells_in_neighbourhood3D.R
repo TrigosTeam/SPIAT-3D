@@ -10,7 +10,7 @@
 #'     and z-coordinate of each cell.
 #' @param reference_cell_type A string specifying the reference cell type.
 #' @param target_cell_types A character vector specifying the target cell types.
-#' @param radius A positive numeric specifying the radius values.
+#' @param radius A positive numeric specifying the radius value.
 #' @param feature_colname A string specifying the name of the column in the 
 #'     `colData` slot of the SpatialExperiment object that contains the cell 
 #'     type information. Defaults to "Cell.Type".
