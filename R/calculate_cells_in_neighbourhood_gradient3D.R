@@ -4,7 +4,7 @@
 #' @description This function calculates the cells in neighbourhood (gradient 
 #'     version) on a 3D SpatialExperiment Object. This metric finds the
 #'     proportion of target cells around each reference cell, for each target
-#'     cell types, and calculates the average proportion across all radii.
+#'     cell type, and calculates the average proportion across all radii.
 #' 
 #' @param spe A SpatialExperiment object containing 3D spatial information for 
 #'     the cells. Naming of spatial coordinates MUST be "Cell.X.Position", 
@@ -13,7 +13,7 @@
 #' @param reference_cell_type A string specifying the reference cell type.
 #' @param target_cell_types A character vector specifying the target cell types.
 #' @param radii A positive, ascending numeric vector specifying the set of 
-#'     radius values used to calculate each metric over a gradient.
+#'     radius values used to calculate cells in neighbourhood over a gradient.
 #' @param feature_colname A string specifying the name of the column in the 
 #'     `colData` slot of the SpatialExperiment object that contains the cell 
 #'     type information. Defaults to "Cell.Type".
