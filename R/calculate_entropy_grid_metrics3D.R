@@ -1,3 +1,40 @@
+#' @title Calculate entropy grid metrics in 3D spatial data.
+#'
+#' @description This functions divides a 3D SpatialExperiment Object into a 3D 
+#'     grid of rectangular prisms. The entropy values in each rectangular prism 
+#'     is calculated. The output can be used for other SPIAT-3D metrics:
+#'     calculate_spatial_autocorrelation3D, calculate_prevalence3D,
+#'     calculate_prevalence_gradient3D.
+#' 
+#' @param spe A SpatialExperiment object containing 3D spatial information for 
+#'     the cells. Naming of spatial coordinates MUST be "Cell.X.Position", 
+#'     "Cell.Y.Position", "Cell.Z.Position" for the x-coordinate, y-coordinate 
+#'     and z-coordinate of each cell. 
+#' @param n_splits A positive numeric integer specifying the number splits used
+#'     to divide the x-axis, y-axis and z-axis.
+#' @param cell_types_of_interest A character vector specifying the cell types of 
+#'     interest. If NULL, all cell types in the `feature_colname` column will be 
+#'     considered.
+#' @param feature_colname A string specifying the name of the column in the 
+#'     `colData` slot of the SpatialExperiment object that contains the cell 
+#'     type information. Defaults to "Cell.Type".
+#' @param plot_image A logical indicating whether to plot entropy grid metrics. 
+#'     Defaults to TRUE.
+#'
+#' @return A data frame containing the entropy and spatial information for each 
+#'     rectangular prism.
+#'
+#' @examples
+#' entropy_grid_metrics <- calculate_entropy_grid_metrics3D(
+#'     spe = SPIAT-3D::simulated_spe,
+#'     n_splits = 10,
+#'     cell_types_of_interest = c("Tumour", "Immune"),
+#'     feature_colname = "Cell.Type",
+#'     plot_image = T
+#' )
+#' 
+#' @export
+
 calculate_entropy_grid_metrics3D <- function(spe, 
                                              n_splits,
                                              cell_types_of_interest,
