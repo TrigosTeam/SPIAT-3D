@@ -1,3 +1,35 @@
+#' @title Calculate mixing scores on 3D spatial data.
+#'
+#' @description This function calculates the mixing scores on a 3D 
+#'     SpatialExperiment Object. See paper on theory behind mixing scores (I 
+#'     ain't explaining it here).
+#' 
+#' @param spe A SpatialExperiment object containing 3D spatial information for 
+#'     the cells. Naming of spatial coordinates MUST be "Cell.X.Position", 
+#'     "Cell.Y.Position", "Cell.Z.Position" for the x-coordinate, y-coordinate 
+#'     and z-coordinate of each cell.
+#' @param reference_cell_types A character vector specifying the reference cell 
+#'     types.
+#' @param target_cell_types A character vector specifying the target cell types.
+#' @param radius A positive numeric specifying the radius value.
+#' @param feature_colname A string specifying the name of the column in the 
+#'     `colData` slot of the SpatialExperiment object that contains the cell 
+#'     type information. Defaults to "Cell.Type".
+#'
+#' @return A data frame containing the mixing score values and associated
+#'     information for each valid reference and target cell type combination.
+#'
+#' @examples
+#' result <- calculate_mixing_scores3D(
+#'     spe = SPIAT-3D::simulated_spe,
+#'     reference_cell_types = c("Tumour", "Immune"),
+#'     target_cell_types = c("Tumour", "Immune"),
+#'     radius = 30
+#'     feature_colname = "Cell.Type"
+#' )
+#' 
+#' @export
+
 calculate_mixing_scores3D <- function(spe, 
                                       reference_cell_types, 
                                       target_cell_types, 
@@ -7,8 +39,10 @@ calculate_mixing_scores3D <- function(spe,
   # Define result
   result <- data.frame()
   
+  # Iterate through each reference cell type
   for (reference_cell_type in reference_cell_types) {
     
+    # Iterate through each target cell type
     for (target_cell_type in target_cell_types) {
       
       # No point getting mixing scores if comparing the same cell type
