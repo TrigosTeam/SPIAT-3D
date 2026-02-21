@@ -1,3 +1,42 @@
+#' @title Calculate prevalence gradient of 3D grid metrics.
+#'
+#' @description This functions calculates the 'prevalence gradient', or 
+#'     equivalently, the proportion of rectangular prisms of the 3D grid metrics 
+#'     has a value above the required threshold, for a gradient of thresholds.
+#' 
+#' @param grid_metrics A data frame containing the proportion/entropy and 
+#'     spatial information for each rectangular prism. Obtained from the output
+#'     of the calculate_cell_proportion_grid_metrics3D and 
+#'     calculate_entropy_grid_metrics3D functions.
+#' @param metric_colname A string specifying the name of the column in 
+#'     `grid_metrics` containing the proportion/entropy information. Should be
+#'     'proportion' or 'entropy'.
+#' @param show_AUC A logical indicating whether to print out the prevalence
+#'     gradient AUC value. Defaults to TRUE.
+#' @param plot_image A logical indicating whether to plot a line graph showing
+#'     prevalence vs threshold values. Defaults to TRUE.
+#'
+#' @return A data frame containing the prevalence values for each threshold.
+#'
+#' @examples
+#' cell_prop_grid_metrics <- calculate_cell_proportion_grid_metrics3D(
+#'     spe = SPIAT-3D::simulated_spe,
+#'     n_splits = 10,
+#'     reference_cell_types = c("Tumour"),
+#'     target_cell_types = c("Immune"),
+#'     feature_colname = "Cell.Type",
+#'     plot_image = T
+#' )
+#' 
+#' prevalence_gradient <- calculate_prevalence_gradient3D(
+#'     grid_metrics = cell_prop_grid_metrics,
+#'     metric_colname = "proportion",
+#'     show_AUC = T,
+#'     plot_image = TRUE
+#' )
+#' 
+#' @export
+
 calculate_prevalence_gradient3D <- function(grid_metrics,
                                             metric_colname,
                                             show_AUC = T,
@@ -30,7 +69,8 @@ calculate_prevalence_gradient3D <- function(grid_metrics,
   
   # Show AUC of prevalence gradient graph
   if (show_AUC) {
-    print(paste("AUC:", round(calculate_prevalence_gradient_AUC3D(result), 2)))
+    AUC_value <- sum(diff(result$threshold) * (head(result$prevalence, -1) + tail(result$prevalence, -1)) / 2)
+    print(paste("AUC:", round(AUC_value, 2)))
   }
   
   # Plot
