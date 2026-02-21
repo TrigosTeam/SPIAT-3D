@@ -1,3 +1,34 @@
+#' @title Function to plot cells in neighbourhood gradient data.
+#'
+#' @description This function plots the cells in neighbourhood gradient data as
+#'     a line graph, showing average cells in neighbourhood vs radius.
+#' 
+#' @param cells_in_neighbourhood_gradient_df A data frame obtained from the
+#'     output of calculate_cells_in_neigbhourhood_gradient3D function.
+
+#' @param reference_cell_type A string specifying the reference cell type. If 
+#'     NULL, no reference cell type label will be showed on the plot. Defaults 
+#'     to NULL.
+#'
+#' @return A ggplot object containing the line graph.
+#'
+#' @examples
+#' result <- calculate_cells_in_neighbourhood_gradient3D(
+#'     spe = SPIAT-3D::simulated_spe,
+#'     reference_cell_type = "Tumour",
+#'     target_cell_types = c("Tumour", "Immune"),
+#'     radii = seq(20, 100, 10),
+#'     feature_colname = "Cell.Type",
+#'     plot_image = FALSE
+#' )
+#' 
+#' fig <- plot_cells_in_neighbourhood_gradient3D(
+#'     cells_in_neighbourhood_gradient_df = result,
+#'     reference_cell_type = "Tumour"
+#' )
+#' 
+#' @export
+
 plot_cells_in_neighbourhood_gradient3D <- function(cells_in_neighbourhood_gradient_df, 
                                                    reference_cell_type = NULL) {
   
