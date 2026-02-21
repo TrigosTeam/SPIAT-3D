@@ -4,8 +4,8 @@
 #'     a line graph, showing average cells in neighbourhood vs radius.
 #' 
 #' @param cells_in_neighbourhood_gradient_df A data frame obtained from the
-#'     output of calculate_cells_in_neigbhourhood_gradient3D function.
-
+#'     output of calculate_cells_in_neighbourhood_gradient3D function.
+#'     
 #' @param reference_cell_type A string specifying the reference cell type. If 
 #'     NULL, no reference cell type label will be showed on the plot. Defaults 
 #'     to NULL.
@@ -32,6 +32,7 @@
 plot_cells_in_neighbourhood_gradient3D <- function(cells_in_neighbourhood_gradient_df, 
                                                    reference_cell_type = NULL) {
   
+  # Re-format input data frame
   plot_result <- reshape2::melt(cells_in_neighbourhood_gradient_df, id.vars = c("radius"))
   fig <- ggplot(plot_result, aes(radius, value, color = variable)) +
     geom_point() +
@@ -40,6 +41,7 @@ plot_cells_in_neighbourhood_gradient3D <- function(cells_in_neighbourhood_gradie
     theme_bw() +
     ylim(0, 1)
   
+  # Add reference cell type label
   if (!is.null(reference_cell_type)) {
     fig <- fig + labs(subtitle = paste("Reference: ", reference_cell_type, sep = ""))
   }
