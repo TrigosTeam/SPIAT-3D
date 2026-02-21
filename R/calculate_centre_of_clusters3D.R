@@ -24,8 +24,16 @@
 #'     cell cluster.
 #'
 #' @examples
+#' alpha_hull_spe <- alpha_hull_clustering3D(
+#'     spe = SPIAT-3D::simulated_spe,
+#'     cell_types_of_interest = c("Tumour", "Immune"),
+#'     alpha = 8,
+#'     feature_colname = "Cell.Type",
+#'     plot_image = TRUE
+#' )
+#' 
 #' cluster_centres <- calculate_center_of_clusters3D(
-#'     spe = SPIAT-3D::simulated_spe_with_alpha_hull_clustering,
+#'     spe = alpha_hull_spe
 #'     cluster_colname = "alpha_hull_cluster",
 #' )
 #' 

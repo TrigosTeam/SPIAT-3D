@@ -29,8 +29,16 @@
 #'     type pair.
 #'
 #' @examples
+#' alpha_hull_spe <- alpha_hull_clustering3D(
+#'     spe = SPIAT-3D::simulated_spe,
+#'     cell_types_of_interest = c("Tumour", "Immune"),
+#'     alpha = 8,
+#'     feature_colname = "Cell.Type",
+#'     plot_image = TRUE
+#' )
+#' 
 #' minimum_distances_to_clusters <- calculate_minimum_distances_to_clusters3D(
-#'     spe = SPIAT-3D::simulated_spe_with_alpha_hull_clustering,
+#'     spe = alpha_hull_spe,
 #'     cell_types_inside_cluster = c("Tumour"),
 #'     cell_types_outside_cluster = c("Tumour", "Immune"),
 #'     cluster_colname = "alpha_hull_cluster",
