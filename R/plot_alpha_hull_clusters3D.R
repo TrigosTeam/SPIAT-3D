@@ -34,7 +34,7 @@
 #' )
 #' 
 #' fig <- plot_alpha_hull_clusters3D(
-#'     spe = alpha_hull_spe,
+#'     spe_with_alpha_hull = alpha_hull_spe,
 #'     plot_cell_types = NULL,
 #'     plot_colours = NULL,
 #'     feature_colname = "Cell.Type"
