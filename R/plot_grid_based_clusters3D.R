@@ -1,3 +1,48 @@
+#' @title Function to plot grid based clusters in 3D spatial data.
+#'
+#' @description This functions plots the cells of 3D spatial data and also
+#'     displays the grid based clusters in a 3D SpatialExperiment Object where 
+#'     grid based clusters have already been identified.
+#' 
+#' @param spe A SpatialExperiment object containing 3D spatial information for 
+#'     the cells. Naming of spatial coordinates MUST be "Cell.X.Position", 
+#'     "Cell.Y.Position", "Cell.Z.Position" for the x-coordinate, y-coordinate 
+#'     and z-coordinate of each cell. It must also contain the cell clustering 
+#'     information, obtained by passing the SpatialExperiment object through the 
+#'     grid_based_clustering3D function.
+#' @param plot_cell_types A string vector specifying the cell types to plot. If 
+#'     NULL, all cell types in the `feature_colname` column will be considered. 
+#'     Defaults to NULL.
+#' @param plot_colours A string vector specifying the colours of the cell types
+#'     when plotting. Must match the number of cell types specified in 
+#'     `plot_cell_types`. If NULL, the rainbow color pallete will be used. 
+#'     Defaults to NULL.
+#' @param feature_colname A string specifying the name of the column in the 
+#'     `colData` slot of the SpatialExperiment object that contains the cell 
+#'     type information. Defaults to "Cell.Type"
+#'
+#' @return A Plotly object plotting the cells and grid based clusters of the 3D 
+#'     SpatialExperiment Object.
+#'
+#' @examples
+#' grid_based_spe <- grid_based_clustering3D(
+#'     spe = SPIAT-3D::simulated_spe,
+#'     cell_types_of_interest = c("Tumour", "Immune"),
+#'     n_splits = 10,
+#'     minimum_cells_in_cluster = 30,
+#'     feature_colname = "Cell.Type",
+#'     plot_image = TRUE
+#' )
+#' 
+#' fig <- plot_grid_based_clusters3D(
+#'     spe_with_grid = grid_based_spe,
+#'     plot_cell_types = NULL,
+#'     plot_colours = NULL,
+#'     feature_colname = "Cell.Type"
+#' )
+#' 
+#' @export
+
 plot_grid_based_clusters3D <- function(spe_with_grid, 
                                        plot_cell_types = NULL,
                                        plot_colours = NULL,
