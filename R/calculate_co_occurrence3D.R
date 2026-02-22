@@ -26,7 +26,7 @@
 #'     reference_cell_type = "Tumour",
 #'     target_cell_types = c("Tumour", "Immune"),
 #'     radii = 30
-#'     feature_colname = "Cell.Type
+#'     feature_colname = "Cell.Type"
 #' )
 #' 
 #' @export
