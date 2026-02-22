@@ -48,7 +48,7 @@ dbscan_clustering3D <- function(spe,
                                 minimum_cells_in_radius,
                                 minimum_cells_in_cluster,
                                 feature_colname = "Cell.Type",
-                                plot_image = T) {
+                                plot_image = TRUE) {
   
   # Check input parameters
   if (class(spe) != "SpatialExperiment") {
