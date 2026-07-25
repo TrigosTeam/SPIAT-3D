@@ -202,8 +202,8 @@ calculate_all_single_radius_cc_metrics2D <- function(spe,
 
   # Get rough dimensions of window for cross_K
   spe_coords <- data.frame(spatialCoords(spe))
-  length <- round(max(spe_coords$Cell.X.Position) - min(spe_coords$Cell.X.Position))
-  width  <- round(max(spe_coords$Cell.Y.Position) - min(spe_coords$Cell.Y.Position))
+  length <- (max(spe_coords$Cell.X.Position) - min(spe_coords$Cell.X.Position))
+  width  <- (max(spe_coords$Cell.Y.Position) - min(spe_coords$Cell.Y.Position))
   ## Get area of the window the cells are in
   area <- length * width
 
@@ -795,8 +795,8 @@ calculate_cross_G2D <- function(spe,
   # Get rough dimensions of the window the points are in
   spe_coords <- data.frame(spatialCoords(spe))
 
-  length <- round(max(spe_coords$Cell.X.Position) - min(spe_coords$Cell.X.Position))
-  width  <- round(max(spe_coords$Cell.Y.Position) - min(spe_coords$Cell.Y.Position))
+  length <- (max(spe_coords$Cell.X.Position) - min(spe_coords$Cell.X.Position))
+  width  <- (max(spe_coords$Cell.Y.Position) - min(spe_coords$Cell.Y.Position))
 
   # Get area of the window the cells are in
   area <- length * width
@@ -881,8 +881,8 @@ calculate_cross_K2D <- function(spe,
   ## Get rough dimensions of the window the points are in
   spe_coords <- data.frame(spatialCoords(spe))
 
-  length <- round(max(spe_coords$Cell.X.Position) - min(spe_coords$Cell.X.Position))
-  width  <- round(max(spe_coords$Cell.Y.Position) - min(spe_coords$Cell.Y.Position))
+  length <- (max(spe_coords$Cell.X.Position) - min(spe_coords$Cell.X.Position))
+  width  <- (max(spe_coords$Cell.Y.Position) - min(spe_coords$Cell.Y.Position))
   ## Get area of the window the cells are in
   area <- length * width
 
@@ -1753,8 +1753,8 @@ get_spe_grid_metrics2D <- function(spe,
   max_x <- max(spe_coords[ , "Cell.X.Position"])
   max_y <- max(spe_coords[ , "Cell.Y.Position"])
 
-  length <- round(max_x - min_x)
-  width  <- round(max_y - min_y)
+  length <- (max_x - min_x)
+  width  <- (max_y - min_y)
 
   ## Get distance of row, col and lay
   d_row <- length / n_splits
@@ -1776,8 +1776,8 @@ get_spe_grid_metrics2D <- function(spe,
 
   ## Determine centre coordinates of each grid prism
   grid_prism_coordinates <- data.frame(grid_prism_num = seq(n_grid_prisms),
-                                       x_coord = ((seq(n_grid_prisms) - 1) %% n_splits + 0.5) * d_row + round(min_x),
-                                       y_coord = (floor(((seq(n_grid_prisms) - 1) %% (n_splits)^2) / n_splits) + 0.5) * d_col + round(min_y))
+                                       x_coord = ((seq(n_grid_prisms) - 1) %% n_splits + 0.5) * d_row + (min_x),
+                                       y_coord = (floor(((seq(n_grid_prisms) - 1) %% (n_splits)^2) / n_splits) + 0.5) * d_col + (min_y))
 
   spe@metadata[["grid_metrics"]] <- list("grid_prism_cell_matrix" = grid_prism_cell_matrix,
                                          "grid_prism_coordinates" = grid_prism_coordinates)

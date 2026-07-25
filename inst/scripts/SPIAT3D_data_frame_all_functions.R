@@ -203,9 +203,9 @@ calculate_all_single_radius_cc_metrics3D <- function(spatial_df,
 
   # Get rough dimensions of window for cross_K
   spatial_df_coords <- spatial_df[ , c("Cell.X.Position", "Cell.Y.Position", "Cell.Z.Position")]
-  length <- round(max(spatial_df_coords$Cell.X.Position) - min(spatial_df_coords$Cell.X.Position))
-  width  <- round(max(spatial_df_coords$Cell.Y.Position) - min(spatial_df_coords$Cell.Y.Position))
-  height <- round(max(spatial_df_coords$Cell.Z.Position) - min(spatial_df_coords$Cell.Z.Position))
+  length <- (max(spatial_df_coords$Cell.X.Position) - min(spatial_df_coords$Cell.X.Position))
+  width  <- (max(spatial_df_coords$Cell.Y.Position) - min(spatial_df_coords$Cell.Y.Position))
+  height <- (max(spatial_df_coords$Cell.Z.Position) - min(spatial_df_coords$Cell.Z.Position))
   ## Get volume of the window the cells are in
   volume <- length * width * height
 
@@ -791,9 +791,9 @@ calculate_cross_G3D <- function(spatial_df,
   # Get rough dimensions of the window the points are in
   spatial_df_coords <- spatial_df[ , c("Cell.X.Position", "Cell.Y.Position", "Cell.Z.Position")]
 
-  length <- round(max(spatial_df_coords$Cell.X.Position) - min(spatial_df_coords$Cell.X.Position))
-  width  <- round(max(spatial_df_coords$Cell.Y.Position) - min(spatial_df_coords$Cell.Y.Position))
-  height <- round(max(spatial_df_coords$Cell.Z.Position) - min(spatial_df_coords$Cell.Z.Position))
+  length <- (max(spatial_df_coords$Cell.X.Position) - min(spatial_df_coords$Cell.X.Position))
+  width  <- (max(spatial_df_coords$Cell.Y.Position) - min(spatial_df_coords$Cell.Y.Position))
+  height <- (max(spatial_df_coords$Cell.Z.Position) - min(spatial_df_coords$Cell.Z.Position))
 
   # Get volume of the window the cells are in
   volume <- length * width * height
@@ -878,9 +878,9 @@ calculate_cross_K3D <- function(spatial_df,
   ## Get rough dimensions of the window the points are in
   spatial_df_coords <- spatial_df[ , c("Cell.X.Position", "Cell.Y.Position", "Cell.Z.Position")]
 
-  length <- round(max(spatial_df_coords$Cell.X.Position) - min(spatial_df_coords$Cell.X.Position))
-  width  <- round(max(spatial_df_coords$Cell.Y.Position) - min(spatial_df_coords$Cell.Y.Position))
-  height <- round(max(spatial_df_coords$Cell.Z.Position) - min(spatial_df_coords$Cell.Z.Position))
+  length <- (max(spatial_df_coords$Cell.X.Position) - min(spatial_df_coords$Cell.X.Position))
+  width  <- (max(spatial_df_coords$Cell.Y.Position) - min(spatial_df_coords$Cell.Y.Position))
+  height <- (max(spatial_df_coords$Cell.Z.Position) - min(spatial_df_coords$Cell.Z.Position))
   ## Get volume of the window the cells are in
   volume <- length * width * height
 
@@ -1745,9 +1745,9 @@ get_spatial_df_grid_metrics3D <- function(spatial_df,
   max_y <- max(spatial_df_coords[ , "Cell.Y.Position"])
   max_z <- max(spatial_df_coords[ , "Cell.Z.Position"])
 
-  length <- round(max_x - min_x)
-  width  <- round(max_y - min_y)
-  height <- round(max_z - min_z)
+  length <- (max_x - min_x)
+  width  <- (max_y - min_y)
+  height <- (max_z - min_z)
 
   ## Get distance of row, col and lay
   d_row <- length / n_splits
@@ -1772,9 +1772,9 @@ get_spatial_df_grid_metrics3D <- function(spatial_df,
 
   ## Determine centre coordinates of each grid prism
   grid_prism_coordinates <- data.frame(grid_prism_num = seq(n_grid_prisms),
-                                       x_coord = ((seq(n_grid_prisms) - 1) %% n_splits + 0.5) * d_row + round(min_x),
-                                       y_coord = (floor(((seq(n_grid_prisms) - 1) %% (n_splits)^2) / n_splits) + 0.5) * d_col + round(min_y),
-                                       z_coord = (floor((seq(n_grid_prisms) - 1) / (n_splits^2)) + 0.5) * d_lay + round(min_z))
+                                       x_coord = ((seq(n_grid_prisms) - 1) %% n_splits + 0.5) * d_row + (min_x),
+                                       y_coord = (floor(((seq(n_grid_prisms) - 1) %% (n_splits)^2) / n_splits) + 0.5) * d_col + (min_y),
+                                       z_coord = (floor((seq(n_grid_prisms) - 1) / (n_splits^2)) + 0.5) * d_lay + (min_z))
 
   grid_metrics <- list("grid_prism_cell_matrix" = grid_prism_cell_matrix,
                        "grid_prism_coordinates" = grid_prism_coordinates)

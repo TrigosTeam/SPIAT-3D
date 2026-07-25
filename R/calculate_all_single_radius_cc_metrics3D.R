@@ -105,9 +105,9 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
 
   # Get rough dimensions of window for cross_K
   spe_coords <- data.frame(SpatialExperiment::spatialCoords(spe))
-  length <- round(max(spe_coords$Cell.X.Position) - min(spe_coords$Cell.X.Position))
-  width  <- round(max(spe_coords$Cell.Y.Position) - min(spe_coords$Cell.Y.Position))
-  height <- round(max(spe_coords$Cell.Z.Position) - min(spe_coords$Cell.Z.Position))
+  length <- (max(spe_coords$Cell.X.Position) - min(spe_coords$Cell.X.Position))
+  width  <- (max(spe_coords$Cell.Y.Position) - min(spe_coords$Cell.Y.Position))
+  height <- (max(spe_coords$Cell.Z.Position) - min(spe_coords$Cell.Z.Position))
 
   # Get volume of the window the cells are in
   volume <- length * width * height
