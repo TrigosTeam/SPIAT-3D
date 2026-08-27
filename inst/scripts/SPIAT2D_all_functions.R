@@ -259,7 +259,7 @@ calculate_all_single_radius_cc_metrics2D <- function(spe,
 
   ## Cross_L ---------------------
   cross_L_df <- cross_K_df
-  cross_L_df[ , c("expected", target_cell_types)] <- (cross_L_df[ , c("expected", target_cell_types)] / (pi)) ^ (1/3)
+  cross_L_df[ , c("expected", target_cell_types)] <- (cross_L_df[ , c("expected", target_cell_types)] / (pi)) ^ (1/2)
   result[["cross_L"]] <- cross_L_df
 
   ## Cross_G ---------------------
@@ -293,15 +293,32 @@ calculate_all_single_radius_cc_metrics2D <- function(spe,
   colnames(co_occurrence_df) <- co_occurrence_df_colnames
   co_occurrence_df$reference <- reference_cell_type
 
-  n_cells_in_spe <- length(spe[[feature_colname]])
   n_cells_in_reference_cell_type_radius <- sum(neighbourhood_counts_df$total)
+
+  # Get total number of cells in radius around all cell types
+  n_cells_in_all_cell_type_radius <- dbscan::frNN(SpatialExperiment::spatialCoords(spe),
+                                                  eps = radius,
+                                                  query = SpatialExperiment::spatialCoords(spe),
+                                                  sort = FALSE)
+
+  n_cells_in_all_cell_type_radius <- sum(rapply(n_cells_in_all_cell_type_radius$id, base::length))
 
   for (target_cell_type in target_cell_types) {
     n_target_cells_in_reference_cell_type_radius <- sum(neighbourhood_counts_df[[target_cell_type]])
     target_cell_type_proportion_in_reference_cell_type_radius <- n_target_cells_in_reference_cell_type_radius / n_cells_in_reference_cell_type_radius
-    n_target_cells_in_spe <- sum(spe[[feature_colname]] == target_cell_type)
-    target_cell_type_proportion_in_spe <- n_target_cells_in_spe / n_cells_in_spe
-    target_cell_type_co_occurrence <- target_cell_type_proportion_in_reference_cell_type_radius / target_cell_type_proportion_in_spe
+
+    # Get total number of target cells in radius around all cell types
+    n_target_cells_in_all_cell_type_radius <- dbscan::frNN(SpatialExperiment::spatialCoords(spe)[spe[[feature_colname]] == target_cell_type, ],
+                                                           eps = radius,
+                                                           query = SpatialExperiment::spatialCoords(spe),
+                                                           sort = FALSE)
+    n_target_cells_in_all_cell_type_radius <- sum(rapply(n_target_cells_in_all_cell_type_radius$id, base::length))
+
+    # Get proportion of target cells in radius around all cell types
+    target_cell_type_proportion_in_all_cell_type_radius <- n_target_cells_in_all_cell_type_radius / n_cells_in_all_cell_type_radius
+
+    # Get co-occurence value for target cell type
+    target_cell_type_co_occurrence <- target_cell_type_proportion_in_reference_cell_type_radius / target_cell_type_proportion_in_all_cell_type_radius
 
     co_occurrence_df[[target_cell_type]] <- target_cell_type_co_occurrence
   }
@@ -944,11 +961,9 @@ calculate_cross_L_gradient2D <- function(spe,
   result$radius <- radii
 
   if (plot_image) {
-    fig1 <- plot_cross_L_gradient2D(result)
-    fig2 <- plot_cross_L_gradient_ratio2D(result)
+    fig <- plot_cross_L_gradient2D(result)
 
-    combined_fig <- plot_grid(fig1, fig2, nrow = 2)
-    methods::show(combined_fig)
+    methods::show(fig)
   }
 
   return(result)
