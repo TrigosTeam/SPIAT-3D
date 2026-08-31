@@ -299,7 +299,6 @@ calculate_all_single_radius_cc_metrics3D <- function(spe,
   for (target_cell_type in target_cell_types) {
     n_target_cells_in_reference_cell_type_radius <- sum(neighbourhood_counts_df[[target_cell_type]])
     target_cell_type_proportion_in_reference_cell_type_radius <- n_target_cells_in_reference_cell_type_radius / n_cells_in_reference_cell_type_radius
-    n_target_cells_in_spe <- sum(spe[[feature_colname]] == target_cell_type)
 
     n_target_cells_in_all_cell_type_radius <- dbscan::frNN(SpatialExperiment::spatialCoords(spe)[spe[[feature_colname]] == target_cell_type, ],
                                                            eps = radius,
